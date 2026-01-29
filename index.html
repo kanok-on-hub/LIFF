@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
+  <title>Leave Request</title>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .tap:active { transform: scale(0.98); }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800 pb-28">
+
+  <!-- Header -->
+  <div class="bg-white px-6 pt-10 pb-6 rounded-b-[2rem] shadow-sm sticky top-0 z-20">
+    <div class="flex items-center gap-4">
+      <div id="avatarContainer" class="w-12 h-12 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-100 hidden">
+        <img id="avatarImg" src="" class="w-full h-full object-cover" />
+      </div>
+      <div>
+        <h1 id="pageTitle" class="text-xl font-bold text-gray-900 leading-tight">Submit Leave 📝</h1>
+        <p id="displayName" class="text-gray-500 text-sm opacity-0 transition-opacity">Loading…</p>
+        <p id="hint" class="text-[11px] text-gray-400 mt-1"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMIT VIEW -->
+  <div id="submitView" class="px-5 mt-6 space-y-8 hidden">
+
+    <div>
+      <label class="text-sm font-semibold text-gray-900 ml-1 mb-3 block">Leave Type *</label>
+      <div class="grid grid-cols-2 gap-3">
+        <button type="button" class="bg-white border border-gray-200 rounded-2xl p-4 text-left tap" onclick="selectType(this,'Sick')">
+          <div class="text-2xl">🤒</div><div class="font-semibold mt-1">Sick</div>
+        </button>
+        <button type="button" class="bg-white border border-gray-200 rounded-2xl p-4 text-left tap" onclick="selectType(this,'Annual')">
+          <div class="text-2xl">🏖️</div><div class="font-semibold mt-1">Annual</div>
+        </button>
+        <button type="button" class="bg-white border border-gray-200 rounded-2xl p-4 text-left tap" onclick="selectType(this,'Personal')">
+          <div class="text-2xl">🚗</div><div class="font-semibold mt-1">Personal</div>
+        </button>
+        <button type="button" class="bg-white border border-gray-200 rounded-2xl p-4 text-left tap" onclick="selectType(this,'Other')">
+          <div class="text-2xl">📝</div><div class="font-semibold mt-1">Other</div>
+        </button>
+      </div>
+      <input type="hidden" id="leaveType" value="">
+      <p id="sickHint" class="text-xs text-red-600 mt-2 hidden">⚠️ If Sick Leave is long, attachment may be required.</p>
+    </div>
+
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+      <label class="text-sm font-semibold text-gray-900 mb-4 block">Date & Time *</label>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="flex-1">
+          <p class="text-xs text-gray-400 mb-1">Start Date</p>
+          <input id="startDate" type="date" class="w-full bg-gray-50 p-3 text-center font-semibold text-lg rounded-xl outline-none" />
+        </div>
+        <div class="text-gray-300">➜</div>
+        <div class="flex-1">
+          <p class="text-xs text-gray-400 mb-1">End Date</p>
+          <input id="endDate" type="date" class="w-full bg-gray-50 p-3 text-center font-semibold text-lg rounded-xl outline-none" />
+        </div>
+      </div>
+
+      <div class="flex bg-gray-100 p-1 rounded-xl">
+        <button type="button" id="btnFull" class="flex-1 py-2 rounded-lg text-sm font-semibold bg-white shadow-sm text-blue-600 tap" onclick="selectPart('FULL')">Full Day</button>
+        <button type="button" id="btnAM" class="flex-1 py-2 rounded-lg text-sm font-semibold text-gray-500 tap" onclick="selectPart('AM')">Morning</button>
+        <button type="button" id="btnPM" class="flex-1 py-2 rounded-lg text-sm font-semibold text-gray-500 tap" onclick="selectPart('PM')">Afternoon</button>
+      </div>
+      <input type="hidden" id="dayPart" value="FULL">
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="text-sm font-semibold text-gray-900 ml-1 mb-2 block">Reason *</label>
+        <textarea id="reason" rows="2" class="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Please specify reason..."></textarea>
+      </div>
+
+      <div>
+        <label class="flex items-center justify-between p-4 bg-white border border-dashed border-gray-300 rounded-2xl active:bg-blue-50 transition cursor-pointer">
+          <div>
+            <div class="text-sm font-semibold text-gray-700" id="fileNameDisplay">Attachment (Optional)</div>
+            <div class="text-[10px] text-gray-400">Image or PDF (Max 5MB)</div>
+          </div>
+          <input type="file" id="file" class="hidden" accept="image/*,application/pdf" onchange="updateFileName(this)" />
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPROVE VIEW -->
+  <div id="approveView" class="px-5 mt-6 hidden">
+    <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
+      <div id="apIcon" class="flex justify-center mb-4">
+        <div class="relative w-20 h-20">
+          <div class="absolute inset-0 border-4 border-gray-100 rounded-full"></div>
+          <div class="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+        </div>
+      </div>
+      <h2 id="apTitle" class="text-2xl font-bold text-gray-900">Verifying…</h2>
+      <p id="apDesc" class="text-gray-500 mt-2 whitespace-pre-line">Processing your decision.</p>
+      <button id="apClose" class="mt-6 w-full bg-gray-900 text-white rounded-2xl py-3 font-semibold hidden" onclick="liff.closeWindow()">Close</button>
+    </div>
+  </div>
+
+  <!-- Bottom Bar -->
+  <div id="bottomBar" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] z-30 shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.06)] hidden">
+    <button id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl text-lg shadow-lg tap">
+      Submit Request
+    </button>
+  </div>
+
+  <div id="loadingOverlay" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden backdrop-blur-sm">
+    <div class="bg-white p-6 rounded-3xl flex flex-col items-center shadow-xl">
+      <div class="w-10 h-10 border-4 border-gray-100 rounded-full border-t-blue-600 animate-spin mb-3"></div>
+      <p class="text-gray-800 font-medium">Working…</p>
+    </div>
+  </div>
+
+<script>
+  // ======= CONFIG (ใส่ให้ถูก) =======
+  const LIFF_ID = "2008997153-OdZGJzVg";
+  const API_URL = "https://script.google.com/macros/s/AKfycby9WkktTkhrTLrtCYdNVDuedfewbuWgAkR5v3oV2u2a9htVhzyZzf2Ihdu3yw8sFk32qQ/exec"; // https://script.google.com/macros/s/XXXX/exec
+
+  let profile = null;
+  let idToken = "";
+  let leaveType = "";
+  let dayPart = "FULL";
+
+  const $ = (id)=>document.getElementById(id);
+
+  // Read params from both query and liff.state
+  function getAllParams(){
+    const p = new URLSearchParams(location.search);
+    const out = {};
+    for (const [k,v] of p.entries()) out[k]=v;
+
+    // liff.state (?page=approve&...)
+    if (out["liff.state"]) {
+      const s = String(out["liff.state"]).replace(/^\?/, "");
+      const sp = new URLSearchParams(s);
+      for (const [k,v] of sp.entries()) out[k]=v;
+    }
+    return out;
+  }
+
+  function markSelected(btn){
+    document.querySelectorAll('#submitView button.tap').forEach(b=>{
+      b.classList.remove('border-blue-600','bg-blue-50');
+      b.classList.add('border-gray-200','bg-white');
+    });
+    btn.classList.remove('border-gray-200','bg-white');
+    btn.classList.add('border-blue-600','bg-blue-50');
+  }
+
+  function selectType(btn, val){
+    leaveType = val;
+    $('leaveType').value = val;
+    $('sickHint').classList.toggle('hidden', val !== 'Sick');
+    markSelected(btn);
+  }
+
+  function selectPart(val){
+    dayPart = val;
+    $('dayPart').value = val;
+    ['FULL','AM','PM'].forEach(v=>{
+      const id = v==='FULL'?'btnFull':(v==='AM'?'btnAM':'btnPM');
+      $(id).className = 'flex-1 py-2 rounded-lg text-sm font-semibold tap ' + (v===val ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500');
+    });
+  }
+
+  function updateFileName(input){
+    if(input.files && input.files[0]){
+      const n = input.files[0].name;
+      $('fileNameDisplay').textContent = n.length>28 ? n.slice(0,28)+'…' : n;
+    } else {
+      $('fileNameDisplay').textContent = 'Attachment (Optional)';
+    }
+  }
+
+  function fileToBase64(file){
+    return new Promise((resolve,reject)=>{
+      if(!file) return resolve({base64:"", mime:"", name:""});
+      const reader = new FileReader();
+      reader.onload = ()=> resolve({ base64: reader.result, mime: file.type || "", name: file.name || "" });
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function showSubmit(){
+    $('pageTitle').textContent = "Submit Leave 📝";
+    $('submitView').classList.remove('hidden');
+    $('approveView').classList.add('hidden');
+    $('bottomBar').classList.remove('hidden');
+  }
+
+  function showApprove(){
+    $('pageTitle').textContent = "Leave Approval ✅";
+    $('submitView').classList.add('hidden');
+    $('approveView').classList.remove('hidden');
+    $('bottomBar').classList.add('hidden');
+  }
+
+  function setLoading(on){
+    $('loadingOverlay').classList.toggle('hidden', !on);
+  }
+
+  function validateSubmit(){
+    if(!idToken) return "Cannot verify your identity. Please reopen LIFF.";
+    if(!leaveType) return "Please select Leave Type.";
+    const s = $('startDate').value, e = $('endDate').value;
+    if(!s || !e) return "Please select Start/End Date.";
+    if(new Date(e) < new Date(s)) return "End Date must be on/after Start Date.";
+    if(!($('reason').value || '').trim()) return "Reason is required.";
+    return null;
+  }
+
+  async function initLiff(){
+    await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+
+    if(!liff.isLoggedIn()){
+      liff.login({ redirectUri: location.href });
+      return;
+    }
+
+    profile = await liff.getProfile();
+    idToken = liff.getIDToken() || "";
+
+    $('displayName').textContent = `Hi, ${profile.displayName}`;
+    $('displayName').classList.remove('opacity-0');
+    $('hint').textContent = liff.isInClient() ? "LINE LIFF Mode" : "External Browser Mode";
+
+    if(profile.pictureUrl){
+      $('avatarImg').src = profile.pictureUrl;
+      $('avatarContainer').classList.remove('hidden');
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    if(!$('startDate').value) $('startDate').value = today;
+    if(!$('endDate').value) $('endDate').value = today;
+    selectPart('FULL');
+  }
+
+  async function submitLeave(){
+    const err = validateSubmit();
+    if(err){ alert("⚠️ " + err); return; }
+
+    setLoading(true);
+    try{
+      const payload = {
+        action: "submit_leave",
+        idToken,
+        leaveType,
+        startDate: $('startDate').value,
+        endDate: $('endDate').value,
+        dayPart,
+        reason: ($('reason').value || '').trim()
+      };
+
+      const f = $('file').files && $('file').files[0];
+      if(f){
+        if(f.size > 5*1024*1024) throw new Error("File size limit is 5MB");
+        const att = await fileToBase64(f);
+        payload.attachmentBase64 = att.base64;
+        payload.attachmentMime = att.mime;
+        payload.attachmentName = att.name;
+      }
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type":"text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+
+      const json = await res.json();
+      if(!json.ok) throw new Error(json.error || "Unknown error");
+
+      alert("✅ Thank you. Your leave request has been submitted successfully.");
+      if(liff.isInClient()) liff.closeWindow();
+      else setLoading(false);
+
+    }catch(e){
+      setLoading(false);
+      alert("❌ Error: " + (e.message || e));
+    }
+  }
+
+  function apSetSuccess(isApprove, requestId){
+    $('apIcon').innerHTML = isApprove
+      ? `<div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+           <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+           </svg>
+         </div>`
+      : `<div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
+           <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>
+           </svg>
+         </div>`;
+    $('apTitle').textContent = isApprove ? "Approved" : "Rejected";
+    $('apDesc').textContent = `Status updated successfully.\nID: ${requestId}`;
+    $('apClose').classList.remove('hidden');
+    setTimeout(()=>{ if(liff.isInClient()) liff.closeWindow(); }, 2200);
+  }
+
+  function apSetError(msg){
+    $('apIcon').innerHTML = `<div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
+      <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+      </svg>
+    </div>`;
+    $('apTitle').textContent = "Error";
+    $('apDesc').innerHTML = `<span class="text-red-600">${msg}</span>`;
+    $('apClose').classList.remove('hidden');
+  }
+
+  async function runApproveFlow(params){
+    showApprove();
+    setLoading(true);
+    try{
+      const requestId = params.requestId;
+      const decision = (params.decision || '').toUpperCase();
+      if(!requestId || !decision) throw new Error("Missing requestId/decision");
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type":"text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "approve_leave",
+          idToken,
+          requestId,
+          decision
+        })
+      });
+
+      const json = await res.json();
+      if(!json.ok) throw new Error(json.error || "Unknown error");
+
+      setLoading(false);
+      apSetSuccess(decision === "APPROVE", requestId);
+
+    }catch(e){
+      setLoading(false);
+      apSetError(e.message || String(e));
+    }
+  }
+
+  $('submitBtn').addEventListener('click', submitLeave);
+
+  (async ()=>{
+    await initLiff();
+
+    const params = getAllParams();
+    if (String(params.page || '').toLowerCase() === 'approve') {
+      await runApproveFlow(params);
+    } else {
+      showSubmit();
+    }
+  })().catch(e => alert("❌ " + (e.message || e)));
+</script>
+</body>
+</html>
