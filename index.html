@@ -111,7 +111,10 @@
   </div>
 </div>
 
-<!-- ✅ Hidden iframe for submit (prevents page navigation) -->
+<!-- ✅ Hidden iframe for submit (prevents page navigation)
+     TIP: If you still stuck on "Submitting...", temporarily REMOVE "hidden"
+     to see if iframe is stuck at login/permission/error page.
+-->
 <iframe id="submitFrame" name="submitFrame" class="hidden"></iframe>
 
 <!-- ✅ Result Modal -->
@@ -210,7 +213,6 @@
   }
 
   async function fetchHolidays() {
-    // optional: if blocked by CORS, it will just ignore holidays
     try {
       const res = await fetch(API_URL + "?action=get_holidays&t=" + Date.now());
       const data = await res.json();
@@ -294,13 +296,26 @@
     document.body.appendChild(form);
     form.submit();
 
-    // Put file input back into UI after submit
+    // Put file input back into UI after submit (best effort)
     setTimeout(() => {
       const holder = document.getElementById("fileCard");
       if (holder && !holder.contains(fileInput)) holder.appendChild(fileInput);
       fileInput.onchange = handleFileChange;
-      document.body.removeChild(form);
+      try { document.body.removeChild(form); } catch(e) {}
     }, 300);
+
+    // ✅ fallback timeout: prevent infinite spinner if no postMessage
+    setTimeout(() => {
+      const loaderVisible = !document.getElementById("loader").classList.contains("hidden");
+      if (loaderVisible) {
+        hideLoader();
+        openResultModal(
+          "No response ❌",
+          "Backend did not return result",
+          "1) Apps Script deploy must be 'Anyone'\n2) Try showing iframe to see login/error\n3) Check API_URL is /exec of latest deployment"
+        );
+      }
+    }, 12000);
   }
 
   async function handleSubmit() {
@@ -332,8 +347,11 @@
   }
 
   // ✅ Receive result from backend via postMessage
+  // Fix: DO NOT rely on origin string (can be script.google.com OR script.googleusercontent.com)
+  // Instead: verify message source is exactly our iframe window.
   window.addEventListener("message", (event) => {
-    if (event.origin !== "https://script.google.com") return;
+    const frame = document.getElementById("submitFrame");
+    if (!frame || event.source !== frame.contentWindow) return;
 
     const data = event.data || {};
     if (!data || data.app !== "leave_backend") return;
@@ -388,7 +406,7 @@
       $('avatarBox').classList.remove('hidden');
     }
 
-    // Optional: name of file field (backend now accepts any, but keep "file")
+    // Keep file field name (backend accepts any, but this is fine)
     $("fileInput").setAttribute("name", "file");
 
     const today = new Date().toISOString().split('T')[0];
