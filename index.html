@@ -4,381 +4,311 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
   <title>Leave Request</title>
-
-  <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Optional debug (disable in prod) -->
-  <!-- <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-  <script>var vConsole = new VConsole();</script> -->
-
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', sans-serif, system-ui; background-color: #f9fafb; margin: 0; padding-bottom: 100px; -webkit-tap-highlight-color: transparent; }
-    input[type="date"]::-webkit-inner-spin-button,
-    input[type="date"]::-webkit-calendar-picker-indicator { background: transparent; bottom: 0; color: transparent; cursor: pointer; height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto; }
-    .type-btn { width: 100%; text-align: left; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 1rem; background: white; position: relative; cursor: pointer; }
-    .type-btn.selected { border-color: #2563eb; background-color: #eff6ff; }
-    .type-btn.selected span.font-medium { color: #2563eb; }
-    .tap-active:active { transform: scale(0.97); transition: transform 0.1s; }
-    .hidden { display: none; }
+    body { font-family: 'Inter', sans-serif; background:#f8fafc; color:#0f172a; -webkit-tap-highlight-color: transparent; }
+    .card { background:#fff; border-radius: 1rem; border:1px solid #e2e8f0; padding: 1rem; }
+    .type-btn { width:100%; text-align:left; padding: 1rem; border:1px solid #e2e8f0; border-radius: 1rem; background:#fff; transition: .2s; }
+    .type-btn.selected { border-color:#2563eb; background:#eff6ff; border-width:2px; }
+    .input { background:#f8fafc; border:1px solid #e2e8f0; border-radius:.75rem; padding:.75rem; width:100%; outline:none; }
+    .err { border:2px solid #ef4444 !important; background:#fef2f2 !important; }
   </style>
 </head>
 
-<body class="bg-gray-50 text-gray-800 pb-24">
-
-<!-- ===================== HIDDEN FORM (NO CORS) ===================== -->
-<form id="postForm" method="POST" target="hidden_iframe" style="display:none;">
-  <input type="hidden" name="payload" id="payloadInput" />
-</form>
-<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
-
-<!-- ===================== SUBMIT PAGE ===================== -->
-<div id="submitPage">
-  <div class="bg-white px-6 pt-10 pb-6 rounded-b-[2rem] shadow-sm sticky top-0 z-20">
+<body class="pb-28">
+<div class="max-w-md mx-auto">
+  <div class="bg-white px-6 pt-10 pb-6 rounded-b-[2.5rem] shadow-sm border-b border-gray-100 mb-6">
     <div class="flex items-center gap-4">
-      <div id="avatarContainer" class="w-12 h-12 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-100 hidden">
-        <img id="avatarImg" src="" class="w-full h-full object-cover">
+      <div id="avatarBox" class="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-50 hidden">
+        <img id="profileImg" src="" class="w-full h-full object-cover">
       </div>
       <div>
-        <h1 class="text-xl font-bold text-gray-900 leading-tight">Submit Leave 📝</h1>
-        <p id="displayName" class="text-gray-500 text-sm opacity-0 transition-opacity">Loading...</p>
+        <h1 class="text-xl font-bold">Leave Request 📝</h1>
+        <p id="userGreet" class="text-slate-500 text-sm font-medium">Loading...</p>
       </div>
     </div>
   </div>
 
-  <div class="px-5 mt-6 space-y-8">
-    <div>
-      <label class="text-sm font-semibold text-gray-900 ml-1 mb-3 block">Leave Type</label>
+  <div class="px-5 space-y-6">
+
+    <div class="space-y-3">
+      <label class="text-sm font-bold text-slate-700 ml-1">Leave Type <span class="text-red-500">*</span></label>
       <div class="grid grid-cols-2 gap-3">
-        <button type="button" onclick="selectType(this, 'Sick')" class="type-btn group"><span class="text-2xl block mb-1">🤒</span><span class="font-medium text-gray-700">Sick</span></button>
-        <button type="button" onclick="selectType(this, 'Annual')" class="type-btn group"><span class="text-2xl block mb-1">🏖️</span><span class="font-medium text-gray-700">Annual</span></button>
-        <button type="button" onclick="selectType(this, 'Personal')" class="type-btn group"><span class="text-2xl block mb-1">🚗</span><span class="font-medium text-gray-700">Personal</span></button>
-        <button type="button" onclick="selectType(this, 'Other')" class="type-btn group"><span class="text-2xl block mb-1">📝</span><span class="font-medium text-gray-700">Other</span></button>
+        <button type="button" onclick="selectType(this,'Sick')" class="type-btn">🤒 <b>Sick</b></button>
+        <button type="button" onclick="selectType(this,'Annual')" class="type-btn">🏖️ <b>Annual</b></button>
+        <button type="button" onclick="selectType(this,'Personal')" class="type-btn">🚗 <b>Personal</b></button>
+        <button type="button" onclick="selectType(this,'Other')" class="type-btn">📝 <b>Other</b></button>
       </div>
-      <input type="hidden" id="leaveType" value="">
+      <input type="hidden" id="leaveTypeValue">
     </div>
 
-    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-      <label class="text-sm font-semibold text-gray-900 mb-4 block">Date & Time</label>
+    <div id="otherField" class="hidden space-y-2">
+      <label class="text-sm font-bold text-blue-600 ml-1 italic">Please specify Other type *</label>
+      <input type="text" id="otherSpecify" class="input" placeholder="e.g. Ordination">
+    </div>
 
-      <div class="flex items-center gap-3 mb-4">
-        <div class="flex-1">
-          <p class="text-xs text-gray-400 mb-1">Start Date</p>
-          <div class="relative bg-gray-50 rounded-xl">
-            <input id="startDate" type="date" class="w-full bg-transparent p-3 text-center font-medium text-lg text-gray-800 focus:outline-none rounded-xl" />
-          </div>
+    <div class="card space-y-3">
+      <div class="flex items-center justify-between">
+        <label class="text-sm font-bold text-slate-700">Date <span class="text-red-500">*</span></label>
+        <span id="dayBadge" class="text-[10px] font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded-full hidden"></span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Start</div>
+          <input type="date" id="startDate" class="input text-center" onchange="validateOnFly()">
         </div>
-
-        <div class="text-gray-300">➜</div>
-
-        <div class="flex-1">
-          <p class="text-xs text-gray-400 mb-1">End Date</p>
-          <div class="relative bg-gray-50 rounded-xl">
-            <input id="endDate" type="date" class="w-full bg-transparent p-3 text-center font-medium text-lg text-gray-800 focus:outline-none rounded-xl" />
-          </div>
+        <div>
+          <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">End</div>
+          <input type="date" id="endDate" class="input text-center" onchange="validateOnFly()">
         </div>
       </div>
 
-      <div class="flex bg-gray-100 p-1 rounded-xl">
-        <button type="button" id="btnFull" class="flex-1 py-2 rounded-lg text-sm font-medium bg-white shadow-sm text-blue-600 transition tap-active" onclick="selectPart(this, 'FULL')">Full Day</button>
-        <button type="button" class="flex-1 py-2 rounded-lg text-sm font-medium text-gray-500 transition tap-active" onclick="selectPart(this, 'AM')">Morning</button>
-        <button type="button" class="flex-1 py-2 rounded-lg text-sm font-medium text-gray-500 transition tap-active" onclick="selectPart(this, 'PM')">Afternoon</button>
-      </div>
-      <input type="hidden" id="dayPart" value="FULL">
+      <div class="text-[10px] text-slate-400 italic font-medium">* Weekends & Company Holidays excluded.</div>
     </div>
 
-    <div class="space-y-4">
-      <div>
-        <label class="text-sm font-semibold text-gray-900 ml-1 mb-2 block">Reason</label>
-        <textarea id="reason" rows="2" class="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition placeholder-gray-400 text-base" placeholder="Please specify reason..." required></textarea>
+    <div class="card space-y-2">
+      <label class="text-sm font-bold text-slate-700 block">Duration <span class="text-red-500">*</span></label>
+      <div class="flex bg-slate-100 p-1 rounded-xl">
+        <button onclick="selectDur(this,'Full Day')" class="dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600">Full Day</button>
+        <button onclick="selectDur(this,'Morning')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Morning</button>
+        <button onclick="selectDur(this,'Afternoon')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Afternoon</button>
       </div>
-
-      <div>
-        <label class="flex items-center justify-between p-4 bg-white border border-dashed border-gray-300 rounded-2xl active:bg-blue-50 transition cursor-pointer">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
-              <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-              </svg>
-            </div>
-            <div>
-              <p class="text-sm font-medium text-gray-700" id="fileNameDisplay">Attachment (Optional)</p>
-              <p class="text-[10px] text-gray-400">Image or PDF (Max 5MB)</p>
-            </div>
-          </div>
-          <input type='file' id="file" class="hidden" accept="image/*,application/pdf" onchange="updateFileName(this)" />
-        </label>
-      </div>
+      <input type="hidden" id="durationValue" value="Full Day">
     </div>
+
+    <div class="space-y-2">
+      <label class="text-sm font-bold text-slate-700 ml-1">Reason <span class="text-red-500">*</span></label>
+      <textarea id="reason" rows="3" class="input" placeholder="Please specify reason..." oninput="validateOnFly()"></textarea>
+    </div>
+
+    <div id="fileCard" class="card border-dashed border-2 flex items-center justify-between cursor-pointer"
+         onclick="document.getElementById('fileInput').click()">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">📎</div>
+        <div>
+          <p id="fileTitle" class="text-sm font-bold text-slate-700">Attachment (Optional)</p>
+          <p class="text-[10px] text-slate-400 italic">Required if Sick Leave ≥ 3 working days</p>
+        </div>
+      </div>
+      <input type="file" id="fileInput" class="hidden" onchange="handleFileChange()">
+    </div>
+
   </div>
 
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-    <button id="btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl text-lg shadow-lg shadow-blue-200 tap-active flex justify-center items-center gap-2">
-      <span>Submit Request</span>
-      <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
-      </svg>
-    </button>
-  </div>
-
-  <div id="loadingOverlay" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden backdrop-blur-sm">
-    <div class="bg-white p-6 rounded-3xl flex flex-col items-center shadow-xl">
-      <div class="w-10 h-10 border-4 border-gray-100 rounded-full border-t-blue-600 animate-spin mb-3"></div>
-      <p class="text-gray-800 font-medium">Submitting...</p>
-    </div>
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+    <button id="submitBtn" onclick="handleSubmit()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg">Submit</button>
   </div>
 </div>
 
-<!-- ===================== APPROVE PAGE ===================== -->
-<div id="approvePage" class="hidden">
-  <div class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden text-center relative">
-      <div id="headerBar" class="h-2 bg-gray-300 w-full"></div>
-      <div class="p-8 py-12">
-        <div id="iconContainer" class="flex justify-center mb-6">
-          <div class="relative w-20 h-20">
-            <div class="absolute inset-0 border-4 border-gray-100 rounded-full"></div>
-            <div class="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
-          </div>
-        </div>
-        <h1 id="statusTitle" class="text-2xl font-bold text-gray-800 mb-2">Verifying...</h1>
-        <p id="statusDesc" class="text-gray-500 text-sm leading-relaxed">Processing your decision.<br>Please wait.</p>
-        <button id="closeBtn" onclick="liff.closeWindow()" class="mt-8 px-6 py-2.5 bg-gray-800 text-white rounded-xl text-sm font-medium hover:bg-gray-900 transition hidden w-full">Close Window</button>
-      </div>
-    </div>
+<div id="loader" class="fixed inset-0 bg-white/80 backdrop-blur-sm hidden items-center justify-center z-50">
+  <div class="text-center">
+    <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+    <div class="font-bold text-slate-600">Submitting...</div>
   </div>
 </div>
 
 <script>
-  /** ===================== EDIT ONLY THESE ===================== */
-  const LIFF_ID = "2008997153-OdZGJzVg"; // ต้องตรงกับ LIFF Console
-  const API_URL = "https://script.google.com/macros/s/AKfycby9WkktTkhrTLrtCYdNVDuedfewbuWgAkR5v3oV2u2a9htVhzyZzf2Ihdu3yw8sFk32qQ/exec"; // ใส่ /exec ของ Apps Script
-  /** ========================================================== */
+  // ======= SET THESE 3 VALUES ONLY =======
+  const LIFF_ID = "2008997153-OdZGJzVg";
+  const API_URL = "https://script.google.com/macros/s/AKfycby9WkktTkhrTLrtCYdNVDuedfewbuWgAkR5v3oV2u2a9htVhzyZzf2Ihdu3yw8sFk32qQ/exec";     // .../exec
+  const SUCCESS_URL = "PASTE_YOUR_GITHUB_SUCCESS_URL_HERE";    // https://USERNAME.github.io/repo/success.html
+  // ======================================
 
-  let profile = null;
+  let companyHolidays = [];
+  let userProfile = null;
 
-  function $(id){ return document.getElementById(id); }
+  const $ = (id) => document.getElementById(id);
 
-  function getPageMode() {
-    const u = new URL(location.href);
-    return (u.searchParams.get('page') || 'submit').toLowerCase();
-  }
-
-  function getApproveParams() {
-    const u = new URL(location.href);
-    let requestId = u.searchParams.get('requestId');
-    let decision = u.searchParams.get('decision');
-
-    // support LIFF state
-    if (!requestId || !decision) {
-      const state = u.searchParams.get('liff.state');
-      if (state) {
-        const sp = new URLSearchParams(String(state).replace(/^\?/, ''));
-        requestId = requestId || sp.get('requestId');
-        decision = decision || sp.get('decision');
-      }
-    }
-    return { requestId, decision: decision ? decision.toUpperCase() : '' };
-  }
-
-  function selectType(btn, value) {
+  function selectType(btn, val) {
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
-    $('leaveType').value = value;
+    $('leaveTypeValue').value = val;
+
+    if (val === 'Other') $('otherField').classList.remove('hidden');
+    else { $('otherField').classList.add('hidden'); $('otherSpecify').value = ''; }
+
+    validateOnFly();
   }
 
-  function selectPart(btn, value) {
-    const parent = btn.parentElement;
-    parent.querySelectorAll('button').forEach(b => {
-      b.style.backgroundColor = "transparent"; b.style.color = "#6b7280"; b.style.boxShadow = "none";
+  function selectDur(btn, val) {
+    document.querySelectorAll('.dur-btn').forEach(b => {
+      b.className = "dur-btn flex-1 py-2 text-sm font-medium text-slate-500";
     });
-    btn.style.backgroundColor = "white"; btn.style.color = "#2563eb"; btn.style.boxShadow = "0 1px 2px 0 rgba(0, 0, 0, 0.05)";
-    $('dayPart').value = value;
+    btn.className = "dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600";
+    $('durationValue').value = val;
   }
 
-  function updateFileName(input) {
-    const display = $('fileNameDisplay');
-    if(input.files && input.files[0]) {
-      display.textContent = input.files[0].name.length > 24 ? (input.files[0].name.substring(0, 24) + "...") : input.files[0].name;
-      display.style.color = "#2563eb";
+  function handleFileChange() {
+    const f = $('fileInput').files[0];
+    if (f) {
+      $('fileTitle').textContent = f.name.length > 18 ? f.name.slice(0,18) + "..." : f.name;
+      $('fileTitle').classList.add('text-blue-600');
     } else {
-      display.textContent = "Attachment (Optional)";
-      display.style.color = "#374151";
+      $('fileTitle').textContent = "Attachment (Optional)";
+      $('fileTitle').classList.remove('text-blue-600');
     }
+    validateOnFly();
   }
 
-  function fileToBase64(file){
+  function toBase64(file) {
     return new Promise((resolve, reject) => {
-      if (!file) return resolve({base64:"", mime:"", name:""});
+      if (!file) return resolve("");
       const reader = new FileReader();
-      reader.onload = () => resolve({ base64: reader.result, mime: file.type || "", name: file.name || "" });
+      reader.onload = () => resolve(reader.result); // dataURL
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
   }
 
-  function postToApiNoCors(payloadObj) {
-    const form = document.getElementById("postForm");
-    const input = document.getElementById("payloadInput");
-    form.action = API_URL + "?t=" + Date.now(); // กัน cache
-    input.value = JSON.stringify(payloadObj);
-    form.submit();
+  async function fetchHolidays() {
+    // Apps Script จะตอบ JSON ได้ แต่ fetch ข้ามโดเมนอาจโดน CORS ในบาง browser
+    // ที่นี่เราใช้วิธี "ลอง fetch" ถ้าไม่ได้ก็ปล่อยว่าง (สูตร working days ยังทำงานได้แต่ไม่ exclude holiday)
+    try {
+      const res = await fetch(API_URL + "?action=get_holidays");
+      const data = await res.json();
+      companyHolidays = Array.isArray(data) ? data : [];
+    } catch (e) {
+      companyHolidays = [];
+      console.warn("Holiday fetch blocked (CORS) — continue without holiday list");
+    }
   }
 
-  async function initSubmit() {
-    selectPart($('btnFull'), 'FULL');
+  function calcWorkingDays(sStr, eStr) {
+    if (!sStr || !eStr) return 0;
+    const s = new Date(sStr);
+    const e = new Date(eStr);
+    if (isNaN(s.getTime()) || isNaN(e.getTime()) || s > e) return 0;
 
+    let total = 0;
+    const cur = new Date(s);
+    while (cur <= e) {
+      const dow = cur.getDay();
+      const isWeekend = (dow === 0 || dow === 6);
+      const dateStr = cur.toISOString().split('T')[0];
+      const isHoliday = companyHolidays.includes(dateStr);
+      if (!isWeekend && !isHoliday) total++;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return total;
+  }
+
+  function validateOnFly() {
+    const type = $('leaveTypeValue').value;
+    const s = $('startDate').value;
+    const e = $('endDate').value;
+    const badge = $('dayBadge');
+
+    if (s && e) {
+      const days = calcWorkingDays(s, e);
+      badge.textContent = `${days} Working Days`;
+      badge.classList.remove('hidden');
+
+      // Rule: Sick >= 3 working days => attachment required
+      const file = $('fileInput').files[0];
+      const card = $('fileCard');
+      if (type === 'Sick' && days >= 3 && !file) {
+        card.classList.add('err');
+        $('fileTitle').textContent = "Medical Cert. Required! *";
+        $('fileTitle').classList.add('text-red-600');
+        return false;
+      } else {
+        card.classList.remove('err');
+        $('fileTitle').classList.remove('text-red-600');
+        return true;
+      }
+    }
+    return true;
+  }
+
+  async function handleSubmit() {
+    const type = $('leaveTypeValue').value;
+    const startDate = $('startDate').value;
+    const endDate = $('endDate').value;
+    const reason = $('reason').value.trim();
+    const otherSpec = $('otherSpecify').value.trim();
+
+    if (!type) return alert("Please select Leave Type");
+    if (type === 'Other' && !otherSpec) return alert("Please specify Other type");
+    if (!startDate || !endDate) return alert("Please select dates");
+    if (!reason) return alert("Please specify reason");
+    if (!validateOnFly()) return alert("Medical Certificate required!");
+
+    $('loader').classList.remove('hidden');
+    $('loader').classList.add('flex');
+
+    try {
+      const f = $('fileInput').files[0];
+      let base64File = "", mimeType = "", fileName = "";
+      if (f) {
+        if (f.size > 5 * 1024 * 1024) throw new Error("File size limit is 5MB");
+        base64File = await toBase64(f);
+        mimeType = f.type || "";
+        fileName = f.name || "";
+      }
+
+      const payload = {
+        userId: userProfile?.userId || "",
+        name: userProfile?.displayName || "",
+        pictureUrl: userProfile?.pictureUrl || "",
+        leaveType: type,
+        otherSpecify: otherSpec,
+        startDate,
+        endDate,
+        dayPart: $('durationValue').value || "Full Day",
+        reason,
+        attachmentBase64: base64File,
+        attachmentMime: mimeType,
+        attachmentName: fileName
+      };
+
+      // ✅ POST แบบ form submit เพื่อให้ backend redirect เฉพาะตอน save สำเร็จ (confirm 100%)
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = `${API_URL}?action=submit_leave`;
+      form.style.display = "none";
+
+      const input = document.createElement("input");
+      input.name = "payload";
+      input.value = JSON.stringify(payload);
+      form.appendChild(input);
+
+      // backend จะใช้ SUCCESS_URL จาก Script Properties
+      document.body.appendChild(form);
+      form.submit();
+
+    } catch (e) {
+      alert("❌ " + (e.message || e));
+      $('loader').classList.add('hidden');
+      $('loader').classList.remove('flex');
+    }
+  }
+
+  async function init() {
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login(); return; }
 
-    try { profile = await liff.getProfile(); } catch(e) { console.error("Profile Error", e); }
-
-    if(profile) {
-      $('displayName').textContent = `Hi, ${profile.displayName}`;
-      $('displayName').classList.remove('opacity-0');
-      if(profile.pictureUrl) { $('avatarImg').src = profile.pictureUrl; $('avatarContainer').classList.remove('hidden'); }
-    } else {
-      $('displayName').textContent = "User Profile not found";
-      $('displayName').style.color = "red";
-      $('displayName').classList.remove('opacity-0');
+    userProfile = await liff.getProfile();
+    $('userGreet').textContent = `Hi, ${userProfile.displayName}`;
+    if (userProfile.pictureUrl) {
+      $('profileImg').src = userProfile.pictureUrl;
+      $('avatarBox').classList.remove('hidden');
     }
 
     const today = new Date().toISOString().split('T')[0];
-    if(!$('startDate').value) $('startDate').value = today;
-    if(!$('endDate').value) $('endDate').value = today;
+    $('startDate').value = today;
+    $('endDate').value = today;
+
+    await fetchHolidays();
+    validateOnFly();
   }
 
-  async function submitForm() {
-    if (!profile || !profile.userId) {
-      alert("⚠️ Cannot verify your identity.\nPlease check if you allowed 'Profile' permission.");
-      return;
-    }
-    if(!$("leaveType").value || !$("startDate").value || !$("endDate").value) {
-      alert("Please select Leave Type and Date.");
-      return;
-    }
-    if(!$("reason").value.trim()) {
-      alert("Reason is required.");
-      return;
-    }
-
-    $('loadingOverlay').classList.remove('hidden');
-
-    try {
-      const payload = {
-        action: "submit_leave",
-        userId: profile.userId,
-        name: profile.displayName,
-        pictureUrl: profile.pictureUrl,
-        leaveType: $("leaveType").value,
-        startDate: $("startDate").value,
-        endDate: $("endDate").value,
-        dayPart: $("dayPart").value,
-        reason: $("reason").value.trim()
-      };
-
-      const f = $("file").files[0];
-      if (f) {
-        if (f.size > 5 * 1024 * 1024) throw new Error("File size limit is 5MB");
-        const att = await fileToBase64(f);
-        payload.attachmentBase64 = att.base64;
-        payload.attachmentMime = att.mime;
-        payload.attachmentName = att.name;
-      }
-
-      // ✅ no-CORS post
-      postToApiNoCors(payload);
-
-      alert("✅ Thank you. Your leave request has been submitted successfully.");
-      liff.closeWindow();
-    } catch (e) {
-      alert("❌ Error: " + e.message);
-      $('loadingOverlay').classList.add('hidden');
-    }
-  }
-
-  async function initApprove() {
-    const { requestId, decision } = getApproveParams();
-
-    $('submitPage').classList.add('hidden');
-    $('approvePage').classList.remove('hidden');
-
-    const ui = {
-      header: $('headerBar'),
-      icon: $('iconContainer'),
-      title: $('statusTitle'),
-      desc: $('statusDesc'),
-      btn: $('closeBtn'),
-      setSuccess: (isApprove) => {
-        const colorClass = isApprove ? 'bg-green-500' : 'bg-red-500';
-        const iconHtml = isApprove
-          ? `<div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-              <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>`
-          : `<div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
-              <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </div>`;
-        ui.header.className = `h-2 w-full ${colorClass}`;
-        ui.icon.innerHTML = iconHtml;
-        ui.title.textContent = isApprove ? "Approved" : "Rejected";
-        ui.desc.textContent = `Status updated.\nID: ${requestId}`;
-        ui.btn.classList.remove('hidden');
-      },
-      setError: (msg) => {
-        ui.header.className = `h-2 w-full bg-gray-500`;
-        ui.icon.innerHTML =
-          `<div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
-             <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-             </svg>
-           </div>`;
-        ui.title.textContent = "Error";
-        ui.desc.innerHTML = `<span class="text-red-500">${msg}</span>`;
-        ui.btn.classList.remove('hidden');
-      }
-    };
-
-    try {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) { liff.login(); return; }
-      if (!requestId || !decision) throw new Error("Missing parameters");
-
-      const p = await liff.getProfile();
-
-      // ✅ no-CORS post (approve)
-      postToApiNoCors({
-        action: "approve_leave",
-        requestId,
-        decision,
-        actorUserId: p.userId
-      });
-
-      ui.setSuccess(decision === 'APPROVE');
-      setTimeout(() => { liff.closeWindow(); }, 2500);
-    } catch (err) {
-      ui.setError(err && err.message ? err.message : "Unknown Error");
-    }
-  }
-
-  // boot
-  const mode = getPageMode();
-  if (mode === 'approve') {
-    initApprove();
-  } else {
-    $('btn').addEventListener("click", submitForm);
-    initSubmit();
-  }
+  init().catch(err => {
+    console.error(err);
+    alert("LIFF init error: " + (err.message || err));
+  });
 </script>
-
 </body>
 </html>
