@@ -4,11 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
   <title>Leave Request</title>
-
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
   <style>
     body { font-family: 'Inter', sans-serif; background:#f8fafc; color:#0f172a; -webkit-tap-highlight-color: transparent; }
     .card { background:#fff; border-radius: 1rem; border:1px solid #e2e8f0; padding: 1rem; }
@@ -16,30 +14,44 @@
     .type-btn.selected { border-color:#2563eb; background:#eff6ff; border-width:2px; }
     .input { background:#f8fafc; border:1px solid #e2e8f0; border-radius:.75rem; padding:.75rem; width:100%; outline:none; }
     .err { border:2px solid #ef4444 !important; background:#fef2f2 !important; }
-    .muted { color:#64748b; }
   </style>
 </head>
 
 <body class="pb-28">
-<div class="max-w-md mx-auto">
 
-  <!-- Header -->
+<!-- ====================== SUCCESS VIEW ====================== -->
+<div id="successView" class="min-h-screen flex items-center justify-center p-6 hidden">
+  <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 max-w-md w-full text-center">
+    <div class="text-4xl mb-2">✅</div>
+    <h1 class="text-xl font-bold text-slate-900">Submitted Successfully</h1>
+    <p id="successMsg" class="text-slate-500 text-sm mt-2"></p>
+
+    <button id="closeBtn" class="mt-6 w-full bg-blue-600 text-white py-3 rounded-2xl font-bold">
+      Close
+    </button>
+
+    <button id="newBtn" class="mt-3 w-full bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold">
+      Submit another request
+    </button>
+  </div>
+</div>
+
+<!-- ====================== FORM VIEW ====================== -->
+<div id="formView" class="max-w-md mx-auto">
   <div class="bg-white px-6 pt-10 pb-6 rounded-b-[2.5rem] shadow-sm border-b border-gray-100 mb-6">
     <div class="flex items-center gap-4">
       <div id="avatarBox" class="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-50 hidden">
-        <img id="profileImg" src="" class="w-full h-full object-cover" alt="profile">
+        <img id="profileImg" src="" class="w-full h-full object-cover">
       </div>
       <div>
         <h1 class="text-xl font-bold">Leave Request 📝</h1>
         <p id="userGreet" class="text-slate-500 text-sm font-medium">Loading...</p>
-        <p id="hintLine" class="text-[11px] muted mt-1 hidden"></p>
       </div>
     </div>
   </div>
 
   <div class="px-5 space-y-6">
 
-    <!-- Leave Type -->
     <div class="space-y-3">
       <label class="text-sm font-bold text-slate-700 ml-1">Leave Type <span class="text-red-500">*</span></label>
       <div class="grid grid-cols-2 gap-3">
@@ -51,13 +63,11 @@
       <input type="hidden" id="leaveTypeValue">
     </div>
 
-    <!-- Other Specify -->
     <div id="otherField" class="hidden space-y-2">
       <label class="text-sm font-bold text-blue-600 ml-1 italic">Please specify Other type *</label>
       <input type="text" id="otherSpecify" class="input" placeholder="e.g. Ordination">
     </div>
 
-    <!-- Dates -->
     <div class="card space-y-3">
       <div class="flex items-center justify-between">
         <label class="text-sm font-bold text-slate-700">Date <span class="text-red-500">*</span></label>
@@ -75,34 +85,31 @@
         </div>
       </div>
 
-      <div class="text-[10px] muted italic font-medium">* Weekends & Company Holidays excluded (if holiday list is reachable).</div>
+      <div class="text-[10px] text-slate-400 italic font-medium">* Weekends & Company Holidays excluded.</div>
     </div>
 
-    <!-- Duration -->
     <div class="card space-y-2">
       <label class="text-sm font-bold text-slate-700 block">Duration <span class="text-red-500">*</span></label>
       <div class="flex bg-slate-100 p-1 rounded-xl">
-        <button type="button" onclick="selectDur(this,'Full Day')" class="dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600">Full Day</button>
-        <button type="button" onclick="selectDur(this,'Morning')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Morning</button>
-        <button type="button" onclick="selectDur(this,'Afternoon')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Afternoon</button>
+        <button onclick="selectDur(this,'Full Day')" class="dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600">Full Day</button>
+        <button onclick="selectDur(this,'Morning')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Morning</button>
+        <button onclick="selectDur(this,'Afternoon')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Afternoon</button>
       </div>
       <input type="hidden" id="durationValue" value="Full Day">
     </div>
 
-    <!-- Reason -->
     <div class="space-y-2">
       <label class="text-sm font-bold text-slate-700 ml-1">Reason <span class="text-red-500">*</span></label>
       <textarea id="reason" rows="3" class="input" placeholder="Please specify reason..." oninput="validateOnFly()"></textarea>
     </div>
 
-    <!-- Attachment -->
     <div id="fileCard" class="card border-dashed border-2 flex items-center justify-between cursor-pointer"
          onclick="document.getElementById('fileInput').click()">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">📎</div>
         <div>
           <p id="fileTitle" class="text-sm font-bold text-slate-700">Attachment (Optional)</p>
-          <p class="text-[10px] muted italic">Required if Sick Leave ≥ 3 working days</p>
+          <p class="text-[10px] text-slate-400 italic">Required if Sick Leave ≥ 3 working days</p>
         </div>
       </div>
       <input type="file" id="fileInput" class="hidden" onchange="handleFileChange()">
@@ -110,15 +117,11 @@
 
   </div>
 
-  <!-- Bottom Bar -->
   <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-    <button id="submitBtn" onclick="handleSubmit()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg">
-      Submit
-    </button>
+    <button id="submitBtn" onclick="handleSubmit()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg">Submit</button>
   </div>
 </div>
 
-<!-- Loader -->
 <div id="loader" class="fixed inset-0 bg-white/80 backdrop-blur-sm hidden items-center justify-center z-50">
   <div class="text-center">
     <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
@@ -127,10 +130,9 @@
 </div>
 
 <script>
-  // ======= SET THESE 3 VALUES ONLY =======
+  // ======= SET THESE 2 VALUES ONLY =======
   const LIFF_ID = "2008997153-OdZGJzVg";
   const API_URL = "https://script.google.com/macros/s/AKfycby9WkktTkhrTLrtCYdNVDuedfewbuWgAkR5v3oV2u2a9htVhzyZzf2Ihdu3yw8sFk32qQ/exec";
-  const SUCCESS_URL = "https://kanok-on-hub.github.io/LIFF/success.html"; // in same folder (LIFF/)
   // ======================================
 
   let companyHolidays = [];
@@ -138,10 +140,23 @@
 
   const $ = (id) => document.getElementById(id);
 
-  function showHint(msg) {
-    const el = $("hintLine");
-    el.textContent = msg;
-    el.classList.remove("hidden");
+  function showSuccessView(ok, requestId) {
+    $("formView").classList.add("hidden");
+    $("successView").classList.remove("hidden");
+    $("successMsg").textContent = ok === "1"
+      ? `Request ID: ${requestId || "-"}`
+      : "Something went wrong.";
+  }
+
+  function showFormView() {
+    $("successView").classList.add("hidden");
+    $("formView").classList.remove("hidden");
+
+    // clean url params (optional)
+    const url = new URL(location.href);
+    url.searchParams.delete("ok");
+    url.searchParams.delete("requestId");
+    history.replaceState({}, "", url.toString());
   }
 
   function selectType(btn, val) {
@@ -190,10 +205,8 @@
       const res = await fetch(API_URL + "?action=get_holidays");
       const data = await res.json();
       companyHolidays = Array.isArray(data) ? data : [];
-      showHint(companyHolidays.length ? `Holiday list loaded (${companyHolidays.length})` : `Holiday list loaded (0)`);
     } catch (e) {
       companyHolidays = [];
-      showHint("Holiday fetch may be blocked (CORS). Continue without holiday list.");
       console.warn("Holiday fetch blocked (CORS) — continue without holiday list");
     }
   }
@@ -228,10 +241,8 @@
       badge.textContent = `${days} Working Days`;
       badge.classList.remove('hidden');
 
-      // Rule: Sick >= 3 working days => attachment required
       const file = $('fileInput').files[0];
       const card = $('fileCard');
-
       if (type === 'Sick' && days >= 3 && !file) {
         card.classList.add('err');
         $('fileTitle').textContent = "Medical Cert. Required! *";
@@ -240,7 +251,6 @@
       } else {
         card.classList.remove('err');
         $('fileTitle').classList.remove('text-red-600');
-        if (!file) $('fileTitle').textContent = "Attachment (Optional)";
         return true;
       }
     }
@@ -268,13 +278,12 @@
       let base64File = "", mimeType = "", fileName = "";
       if (f) {
         if (f.size > 5 * 1024 * 1024) throw new Error("File size limit is 5MB");
-        base64File = await toBase64(f);   // dataURL
+        base64File = await toBase64(f);
         mimeType = f.type || "";
         fileName = f.name || "";
       }
 
       const payload = {
-        action: "submit_leave", // ✅ backend must check this
         userId: userProfile?.userId || "",
         name: userProfile?.displayName || "",
         pictureUrl: userProfile?.pictureUrl || "",
@@ -289,18 +298,19 @@
         attachmentName: fileName
       };
 
-      // ✅ read real JSON response => confirm write success
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      });
+      // ✅ POST แบบ form submit: backend จะ redirect กลับมาที่ index.html?ok=1&requestId=...
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = `${API_URL}?action=submit_leave`;
+      form.style.display = "none";
 
-      const json = await res.json();
-      if (!json?.ok) throw new Error(json?.error || "Submit failed");
+      const input = document.createElement("input");
+      input.name = "payload";
+      input.value = JSON.stringify(payload);
+      form.appendChild(input);
 
-      const requestId = json?.data?.requestId || "";
-      window.location.href = `${SUCCESS_URL}?ok=1&requestId=${encodeURIComponent(requestId)}`;
+      document.body.appendChild(form);
+      form.submit();
 
     } catch (e) {
       alert("❌ " + (e.message || e));
@@ -310,28 +320,55 @@
   }
 
   async function init() {
+    // If redirected back with ok/requestId => show success view
+    const params = new URLSearchParams(location.search);
+    const ok = params.get("ok");
+    const requestId = params.get("requestId");
+    if (ok || requestId) {
+      showSuccessView(ok, requestId);
+    } else {
+      showFormView();
+    }
+
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login(); return; }
 
-    userProfile = await liff.getProfile();
-    $('userGreet').textContent = `Hi, ${userProfile.displayName}`;
-    if (userProfile.pictureUrl) {
-      $('profileImg').src = userProfile.pictureUrl;
-      $('avatarBox').classList.remove('hidden');
+    // Success view still needs LIFF for close button, but profile is optional
+    try {
+      userProfile = await liff.getProfile();
+      if (!ok) {
+        $('userGreet').textContent = `Hi, ${userProfile.displayName}`;
+        if (userProfile.pictureUrl) {
+          $('profileImg').src = userProfile.pictureUrl;
+          $('avatarBox').classList.remove('hidden');
+        }
+      }
+    } catch (e) {}
+
+    // init form defaults only if in form view
+    if (!ok) {
+      const today = new Date().toISOString().split('T')[0];
+      $('startDate').value = today;
+      $('endDate').value = today;
+      await fetchHolidays();
+      validateOnFly();
     }
-
-    const today = new Date().toISOString().split('T')[0];
-    $('startDate').value = today;
-    $('endDate').value = today;
-
-    await fetchHolidays();
-    validateOnFly();
   }
+
+  // buttons on success view
+  document.getElementById("closeBtn").onclick = () => {
+    try { liff.closeWindow(); } catch(e) { window.close(); }
+  };
+  document.getElementById("newBtn").onclick = () => {
+    showFormView();
+    location.reload();
+  };
 
   init().catch(err => {
     console.error(err);
     alert("LIFF init error: " + (err.message || err));
   });
 </script>
+
 </body>
 </html>
