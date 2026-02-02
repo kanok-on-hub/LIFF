@@ -14,30 +14,12 @@
     .type-btn.selected { border-color:#2563eb; background:#eff6ff; border-width:2px; }
     .input { background:#f8fafc; border:1px solid #e2e8f0; border-radius:.75rem; padding:.75rem; width:100%; outline:none; }
     .err { border:2px solid #ef4444 !important; background:#fef2f2 !important; }
+    .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 88px; background:#0f172a; color:#fff; padding:10px 14px; border-radius: 12px; font-size: 12px; display:none; z-index: 60;}
   </style>
 </head>
 
 <body class="pb-28">
-
-<!-- ====================== SUCCESS VIEW ====================== -->
-<div id="successView" class="min-h-screen flex items-center justify-center p-6 hidden">
-  <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 max-w-md w-full text-center">
-    <div class="text-4xl mb-2">✅</div>
-    <h1 class="text-xl font-bold text-slate-900">Submitted Successfully</h1>
-    <p id="successMsg" class="text-slate-500 text-sm mt-2"></p>
-
-    <button id="closeBtn" class="mt-6 w-full bg-blue-600 text-white py-3 rounded-2xl font-bold">
-      Close
-    </button>
-
-    <button id="newBtn" class="mt-3 w-full bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold">
-      Submit another request
-    </button>
-  </div>
-</div>
-
-<!-- ====================== FORM VIEW ====================== -->
-<div id="formView" class="max-w-md mx-auto">
+<div class="max-w-md mx-auto">
   <div class="bg-white px-6 pt-10 pb-6 rounded-b-[2.5rem] shadow-sm border-b border-gray-100 mb-6">
     <div class="flex items-center gap-4">
       <div id="avatarBox" class="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-50 hidden">
@@ -129,10 +111,12 @@
   </div>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script>
   // ======= SET THESE 2 VALUES ONLY =======
   const LIFF_ID = "2008997153-OdZGJzVg";
-  const API_URL = "https://script.google.com/macros/s/AKfycby9WkktTkhrTLrtCYdNVDuedfewbuWgAkR5v3oV2u2a9htVhzyZzf2Ihdu3yw8sFk32qQ/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycby9WkktTkhrTLrtCYdNVDuedfewbuWgAkR5v3oV2u2a9htVhzyZzf2Ihdu3yw8sFk32qQ/exec"; // .../exec
   // ======================================
 
   let companyHolidays = [];
@@ -140,23 +124,11 @@
 
   const $ = (id) => document.getElementById(id);
 
-  function showSuccessView(ok, requestId) {
-    $("formView").classList.add("hidden");
-    $("successView").classList.remove("hidden");
-    $("successMsg").textContent = ok === "1"
-      ? `Request ID: ${requestId || "-"}`
-      : "Something went wrong.";
-  }
-
-  function showFormView() {
-    $("successView").classList.add("hidden");
-    $("formView").classList.remove("hidden");
-
-    // clean url params (optional)
-    const url = new URL(location.href);
-    url.searchParams.delete("ok");
-    url.searchParams.delete("requestId");
-    history.replaceState({}, "", url.toString());
+  function toast(msg){
+    const t = $('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(()=> t.style.display='none', 2200);
   }
 
   function selectType(btn, val) {
@@ -201,6 +173,7 @@
   }
 
   async function fetchHolidays() {
+    // ใช้ได้บ้าง/ไม่ได้บ้างตาม CORS ของ browser แต่ไม่ critical
     try {
       const res = await fetch(API_URL + "?action=get_holidays");
       const data = await res.json();
@@ -257,6 +230,30 @@
     return true;
   }
 
+  function showResultFromQuery() {
+    const qs = new URLSearchParams(location.search);
+    const ok = qs.get('ok');
+    const requestId = qs.get('requestId');
+    const err = qs.get('error');
+
+    if (ok === '1') {
+      alert(`✅ Submitted Successfully!\nRequest ID: ${requestId || '-'}`);
+      // เคลียร์ query ใน address bar กันกด refresh แล้วเด้งซ้ำ
+      history.replaceState({}, document.title, location.pathname);
+      // ปิด LIFF
+      try { liff.closeWindow(); } catch(e) {}
+      return true;
+    }
+
+    if (ok === '0') {
+      alert(`❌ Submit failed\n${err || 'Unknown error'}`);
+      history.replaceState({}, document.title, location.pathname);
+      return true;
+    }
+
+    return false;
+  }
+
   async function handleSubmit() {
     const type = $('leaveTypeValue').value;
     const startDate = $('startDate').value;
@@ -298,7 +295,7 @@
         attachmentName: fileName
       };
 
-      // ✅ POST แบบ form submit: backend จะ redirect กลับมาที่ index.html?ok=1&requestId=...
+      // ✅ POST แบบ form submit (confirm 100% จาก redirect backend)
       const form = document.createElement("form");
       form.method = "POST";
       form.action = `${API_URL}?action=submit_leave`;
@@ -320,55 +317,35 @@
   }
 
   async function init() {
-    // If redirected back with ok/requestId => show success view
-    const params = new URLSearchParams(location.search);
-    const ok = params.get("ok");
-    const requestId = params.get("requestId");
-    if (ok || requestId) {
-      showSuccessView(ok, requestId);
-    } else {
-      showFormView();
-    }
+    // ถ้าเพิ่งถูก backend redirect กลับมา ให้โชว์ผลก่อน
+    // (ยังไม่ต้อง init liff ก็ได้ แต่ถ้าใน LINE จะ init แล้ว closeWindow สวยกว่า)
+    const hadResult = showResultFromQuery();
 
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login(); return; }
 
-    // Success view still needs LIFF for close button, but profile is optional
-    try {
-      userProfile = await liff.getProfile();
-      if (!ok) {
-        $('userGreet').textContent = `Hi, ${userProfile.displayName}`;
-        if (userProfile.pictureUrl) {
-          $('profileImg').src = userProfile.pictureUrl;
-          $('avatarBox').classList.remove('hidden');
-        }
-      }
-    } catch (e) {}
-
-    // init form defaults only if in form view
-    if (!ok) {
-      const today = new Date().toISOString().split('T')[0];
-      $('startDate').value = today;
-      $('endDate').value = today;
-      await fetchHolidays();
-      validateOnFly();
+    // ถ้ามีผลแล้วจะ close ไปแล้ว แต่อย่างน้อยไม่พัง
+    userProfile = await liff.getProfile();
+    $('userGreet').textContent = `Hi, ${userProfile.displayName}`;
+    if (userProfile.pictureUrl) {
+      $('profileImg').src = userProfile.pictureUrl;
+      $('avatarBox').classList.remove('hidden');
     }
-  }
 
-  // buttons on success view
-  document.getElementById("closeBtn").onclick = () => {
-    try { liff.closeWindow(); } catch(e) { window.close(); }
-  };
-  document.getElementById("newBtn").onclick = () => {
-    showFormView();
-    location.reload();
-  };
+    const today = new Date().toISOString().split('T')[0];
+    $('startDate').value = today;
+    $('endDate').value = today;
+
+    await fetchHolidays();
+    validateOnFly();
+
+    if (!hadResult) toast("Ready");
+  }
 
   init().catch(err => {
     console.error(err);
     alert("LIFF init error: " + (err.message || err));
   });
 </script>
-
 </body>
 </html>
