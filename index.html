@@ -6,70 +6,104 @@
   <title>Leave Request</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background:#f8fafc; color:#0f172a; -webkit-tap-highlight-color: transparent; }
+    .card { background:#fff; border-radius: 1rem; border:1px solid #e2e8f0; padding: 1rem; }
+    .type-btn { width:100%; text-align:left; padding: 1rem; border:1px solid #e2e8f0; border-radius: 1rem; background:#fff; transition: .2s; }
+    .type-btn.selected { border-color:#2563eb; background:#eff6ff; border-width:2px; }
+    .input { background:#f8fafc; border:1px solid #e2e8f0; border-radius:.75rem; padding:.75rem; width:100%; outline:none; }
+    .err { border:2px solid #ef4444 !important; background:#fef2f2 !important; }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-900 pb-28">
 
+<body class="pb-28">
 <div class="max-w-md mx-auto">
-  <div class="bg-white px-6 pt-10 pb-6 rounded-b-[2rem] shadow-sm sticky top-0 z-10">
-    <div class="text-xl font-bold">Leave Request 📝</div>
-    <div id="userGreet" class="text-sm text-slate-500 mt-1">Loading...</div>
+  <div class="bg-white px-6 pt-10 pb-6 rounded-b-[2.5rem] shadow-sm border-b border-gray-100 mb-6">
+    <div class="flex items-center gap-4">
+      <div id="avatarBox" class="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-50 hidden">
+        <img id="profileImg" src="" class="w-full h-full object-cover">
+      </div>
+      <div>
+        <h1 class="text-xl font-bold">Leave Request 📝</h1>
+        <p id="userGreet" class="text-slate-500 text-sm font-medium">Loading...</p>
+      </div>
+    </div>
   </div>
 
-  <div class="p-5 space-y-4">
-    <div>
-      <div class="text-sm font-bold mb-2">Leave Type *</div>
-      <div class="grid grid-cols-2 gap-2">
-        <button class="type-btn bg-white border rounded-xl p-3 text-left" onclick="selectType('Sick', this)">🤒 Sick</button>
-        <button class="type-btn bg-white border rounded-xl p-3 text-left" onclick="selectType('Annual', this)">🏖️ Annual</button>
-        <button class="type-btn bg-white border rounded-xl p-3 text-left" onclick="selectType('Personal', this)">🚗 Personal</button>
-        <button class="type-btn bg-white border rounded-xl p-3 text-left" onclick="selectType('Other', this)">📝 Other</button>
+  <div class="px-5 space-y-6">
+
+    <div class="space-y-3">
+      <label class="text-sm font-bold text-slate-700 ml-1">Leave Type <span class="text-red-500">*</span></label>
+      <div class="grid grid-cols-2 gap-3">
+        <button type="button" onclick="selectType(this,'Sick')" class="type-btn">🤒 <b>Sick</b></button>
+        <button type="button" onclick="selectType(this,'Annual')" class="type-btn">🏖️ <b>Annual</b></button>
+        <button type="button" onclick="selectType(this,'Personal')" class="type-btn">🚗 <b>Personal</b></button>
+        <button type="button" onclick="selectType(this,'Other')" class="type-btn">📝 <b>Other</b></button>
       </div>
-      <input id="leaveType" type="hidden" value="">
+      <input type="hidden" id="leaveTypeValue">
     </div>
 
-    <div id="otherBox" class="hidden">
-      <div class="text-sm font-bold mb-2 text-blue-700">Specify Other *</div>
-      <input id="otherSpecify" class="w-full border rounded-xl p-3" placeholder="e.g. Ordination">
+    <div id="otherField" class="hidden space-y-2">
+      <label class="text-sm font-bold text-blue-600 ml-1 italic">Please specify Other type *</label>
+      <input type="text" id="otherSpecify" class="input" placeholder="e.g. Ordination">
     </div>
 
-    <div class="bg-white border rounded-2xl p-4 space-y-2">
-      <div class="text-sm font-bold">Dates *</div>
-      <div class="grid grid-cols-2 gap-2">
-        <input id="startDate" type="date" class="w-full border rounded-xl p-3 text-center" onchange="validateOnFly()">
-        <input id="endDate" type="date" class="w-full border rounded-xl p-3 text-center" onchange="validateOnFly()">
+    <div class="card space-y-3">
+      <div class="flex items-center justify-between">
+        <label class="text-sm font-bold text-slate-700">Date <span class="text-red-500">*</span></label>
+        <span id="dayBadge" class="text-[10px] font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded-full hidden"></span>
       </div>
-      <div id="dayCount" class="text-xs text-blue-700 font-bold hidden"></div>
-      <div class="text-[11px] text-slate-400 italic">* Weekends & Company Holidays excluded.</div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Start</div>
+          <input type="date" id="startDate" class="input text-center" onchange="validateOnFly()">
+        </div>
+        <div>
+          <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">End</div>
+          <input type="date" id="endDate" class="input text-center" onchange="validateOnFly()">
+        </div>
+      </div>
+
+      <div class="text-[10px] text-slate-400 italic font-medium">* Weekends & Company Holidays excluded.</div>
     </div>
 
-    <div class="bg-white border rounded-2xl p-4">
-      <div class="text-sm font-bold mb-2">Duration *</div>
+    <div class="card space-y-2">
+      <label class="text-sm font-bold text-slate-700 block">Duration <span class="text-red-500">*</span></label>
       <div class="flex bg-slate-100 p-1 rounded-xl">
-        <button class="durBtn flex-1 py-2 rounded-lg bg-white font-bold text-blue-700" onclick="selectDur('Full Day', this)">Full Day</button>
-        <button class="durBtn flex-1 py-2 rounded-lg text-slate-500" onclick="selectDur('Morning', this)">Morning</button>
-        <button class="durBtn flex-1 py-2 rounded-lg text-slate-500" onclick="selectDur('Afternoon', this)">Afternoon</button>
+        <button onclick="selectDur(this,'Full Day')" class="dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600">Full Day</button>
+        <button onclick="selectDur(this,'Morning')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Morning</button>
+        <button onclick="selectDur(this,'Afternoon')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Afternoon</button>
       </div>
-      <input id="duration" type="hidden" value="Full Day">
+      <input type="hidden" id="durationValue" value="Full Day">
     </div>
 
-    <div>
-      <div class="text-sm font-bold mb-2">Reason *</div>
-      <textarea id="reason" class="w-full border rounded-2xl p-3" rows="3" oninput="validateOnFly()" placeholder="Please specify reason..."></textarea>
+    <div class="space-y-2">
+      <label class="text-sm font-bold text-slate-700 ml-1">Reason <span class="text-red-500">*</span></label>
+      <textarea id="reason" rows="3" class="input" placeholder="Please specify reason..." oninput="validateOnFly()"></textarea>
     </div>
 
-    <div id="fileCard" class="bg-white border-2 border-dashed rounded-2xl p-4 cursor-pointer" onclick="document.getElementById('file').click()">
-      <div class="font-bold text-sm" id="fileTitle">Attachment (Optional)</div>
-      <div class="text-xs text-slate-400" id="fileHint">Required if Sick Leave ≥ 3 working days</div>
-      <input id="file" type="file" class="hidden" accept="image/*,application/pdf" onchange="handleFileChange(this)">
+    <div id="fileCard" class="card border-dashed border-2 flex items-center justify-between cursor-pointer"
+         onclick="document.getElementById('fileInput').click()">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">📎</div>
+        <div>
+          <p id="fileTitle" class="text-sm font-bold text-slate-700">Attachment (Optional)</p>
+          <p class="text-[10px] text-slate-400 italic">Required if Sick Leave ≥ 3 working days</p>
+        </div>
+      </div>
+      <input type="file" id="fileInput" class="hidden" onchange="handleFileChange()">
     </div>
+
   </div>
 
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
-    <button class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold" onclick="handleSubmit()">Submit</button>
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+    <button id="submitBtn" onclick="handleSubmit()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg">Submit</button>
   </div>
 </div>
 
-<div id="loader" class="fixed inset-0 bg-white/80 backdrop-blur-sm hidden items-center justify-center">
+<div id="loader" class="fixed inset-0 bg-white/80 backdrop-blur-sm hidden items-center justify-center z-50">
   <div class="text-center">
     <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
     <div class="font-bold text-slate-600">Submitting...</div>
@@ -77,72 +111,84 @@
 </div>
 
 <script>
-  // ====== SET THESE 3 VALUES ONLY ======
+  // ======= SET THESE 3 VALUES ONLY =======
   const LIFF_ID = "2008997153-OdZGJzVg";
   const API_URL = "https://script.google.com/macros/s/AKfycby9WkktTkhrTLrtCYdNVDuedfewbuWgAkR5v3oV2u2a9htVhzyZzf2Ihdu3yw8sFk32qQ/exec";
   const SUCCESS_URL = "success.html";
-  // ====================================
+  // ======================================
 
   let companyHolidays = [];
   let userProfile = null;
 
-  function setLoading(on) {
-    const el = document.getElementById("loader");
-    el.classList.toggle("hidden", !on);
-    el.classList.toggle("flex", on);
-  }
+  const $ = (id) => document.getElementById(id);
 
-  function selectType(val, btn) {
-    document.querySelectorAll(".type-btn").forEach(b => b.classList.remove("ring-2","ring-blue-500"));
-    btn.classList.add("ring-2","ring-blue-500");
-    document.getElementById("leaveType").value = val;
+  function selectType(btn, val) {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    $('leaveTypeValue').value = val;
 
-    const otherBox = document.getElementById("otherBox");
-    if (val === "Other") otherBox.classList.remove("hidden");
-    else { otherBox.classList.add("hidden"); document.getElementById("otherSpecify").value = ""; }
+    if (val === 'Other') $('otherField').classList.remove('hidden');
+    else { $('otherField').classList.add('hidden'); $('otherSpecify').value = ''; }
 
     validateOnFly();
   }
 
-  function selectDur(val, btn) {
-    document.querySelectorAll(".durBtn").forEach(b => {
-      b.classList.remove("bg-white","font-bold","text-blue-700");
-      b.classList.add("text-slate-500");
+  function selectDur(btn, val) {
+    document.querySelectorAll('.dur-btn').forEach(b => {
+      b.className = "dur-btn flex-1 py-2 text-sm font-medium text-slate-500";
     });
-    btn.classList.add("bg-white","font-bold","text-blue-700");
-    btn.classList.remove("text-slate-500");
-    document.getElementById("duration").value = val;
+    btn.className = "dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600";
+    $('durationValue').value = val;
   }
 
-  function handleFileChange(input) {
-    const title = document.getElementById("fileTitle");
-    if (input.files && input.files[0]) title.textContent = input.files[0].name;
-    else title.textContent = "Attachment (Optional)";
+  function handleFileChange() {
+    const f = $('fileInput').files[0];
+    if (f) {
+      $('fileTitle').textContent = f.name.length > 18 ? f.name.slice(0,18) + "..." : f.name;
+      $('fileTitle').classList.add('text-blue-600');
+    } else {
+      $('fileTitle').textContent = "Attachment (Optional)";
+      $('fileTitle').classList.remove('text-blue-600');
+    }
     validateOnFly();
+  }
+
+  function toBase64(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) return resolve("");
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result); // dataURL
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   async function fetchHolidays() {
+    // Apps Script จะตอบ JSON ได้ แต่ fetch ข้ามโดเมนอาจโดน CORS ในบาง browser
+    // ที่นี่เราใช้วิธี "ลอง fetch" ถ้าไม่ได้ก็ปล่อยว่าง (สูตร working days ยังทำงานได้แต่ไม่ exclude holiday)
     try {
-      const res = await fetch(`${API_URL}?action=get_holidays`);
+      const res = await fetch(API_URL + "?action=get_holidays");
       const data = await res.json();
       companyHolidays = Array.isArray(data) ? data : [];
     } catch (e) {
       companyHolidays = [];
+      console.warn("Holiday fetch blocked (CORS) — continue without holiday list");
     }
   }
 
-  function calcWorkingDays(startStr, endStr) {
-    const s = new Date(startStr);
-    const e = new Date(endStr);
+  function calcWorkingDays(sStr, eStr) {
+    if (!sStr || !eStr) return 0;
+    const s = new Date(sStr);
+    const e = new Date(eStr);
     if (isNaN(s.getTime()) || isNaN(e.getTime()) || s > e) return 0;
 
     let total = 0;
-    let cur = new Date(s);
+    const cur = new Date(s);
     while (cur <= e) {
-      const day = cur.getDay();
-      const iso = cur.toISOString().split("T")[0];
-      const isWeekend = (day === 0 || day === 6);
-      const isHoliday = companyHolidays.includes(iso);
+      const dow = cur.getDay();
+      const isWeekend = (dow === 0 || dow === 6);
+      const dateStr = cur.toISOString().split('T')[0];
+      const isHoliday = companyHolidays.includes(dateStr);
       if (!isWeekend && !isHoliday) total++;
       cur.setDate(cur.getDate() + 1);
     }
@@ -150,115 +196,110 @@
   }
 
   function validateOnFly() {
-    const type = document.getElementById("leaveType").value;
-    const s = document.getElementById("startDate").value;
-    const e = document.getElementById("endDate").value;
+    const type = $('leaveTypeValue').value;
+    const s = $('startDate').value;
+    const e = $('endDate').value;
+    const badge = $('dayBadge');
 
-    if (!s || !e) return true;
+    if (s && e) {
+      const days = calcWorkingDays(s, e);
+      badge.textContent = `${days} Working Days`;
+      badge.classList.remove('hidden');
 
-    const days = calcWorkingDays(s, e);
-    const badge = document.getElementById("dayCount");
-    badge.textContent = `${days} Working Days`;
-    badge.classList.remove("hidden");
-
-    const file = document.getElementById("file").files[0];
-    const fileCard = document.getElementById("fileCard");
-    const fileTitle = document.getElementById("fileTitle");
-
-    // rule: Sick >= 3 working days requires attachment
-    if (type === "Sick" && days >= 3 && !file) {
-      fileCard.classList.add("border-red-500");
-      fileTitle.textContent = "Medical Cert. Required! *";
-      return false;
-    } else {
-      fileCard.classList.remove("border-red-500");
-      return true;
+      // Rule: Sick >= 3 working days => attachment required
+      const file = $('fileInput').files[0];
+      const card = $('fileCard');
+      if (type === 'Sick' && days >= 3 && !file) {
+        card.classList.add('err');
+        $('fileTitle').textContent = "Medical Cert. Required! *";
+        $('fileTitle').classList.add('text-red-600');
+        return false;
+      } else {
+        card.classList.remove('err');
+        $('fileTitle').classList.remove('text-red-600');
+        return true;
+      }
     }
-  }
-
-  function fileToDataUrl(file) {
-    return new Promise((resolve, reject) => {
-      if (!file) return resolve("");
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
+    return true;
   }
 
   async function handleSubmit() {
-    const leaveType = document.getElementById("leaveType").value;
-    const startDate = document.getElementById("startDate").value;
-    const endDate = document.getElementById("endDate").value;
-    const duration = document.getElementById("duration").value;
-    const reason = document.getElementById("reason").value.trim();
-    const otherSpecify = document.getElementById("otherSpecify").value.trim();
+    const type = $('leaveTypeValue').value;
+    const startDate = $('startDate').value;
+    const endDate = $('endDate').value;
+    const reason = $('reason').value.trim();
+    const otherSpec = $('otherSpecify').value.trim();
 
-    if (!leaveType) return alert("Please select Leave Type");
+    if (!type) return alert("Please select Leave Type");
+    if (type === 'Other' && !otherSpec) return alert("Please specify Other type");
     if (!startDate || !endDate) return alert("Please select dates");
     if (!reason) return alert("Please specify reason");
-    if (leaveType === "Other" && !otherSpecify) return alert("Please specify Other type");
     if (!validateOnFly()) return alert("Medical Certificate required!");
 
-    setLoading(true);
+    $('loader').classList.remove('hidden');
+    $('loader').classList.add('flex');
 
     try {
-      const f = document.getElementById("file").files[0];
-      let attachmentBase64 = "", attachmentMime = "", attachmentName = "";
+      const f = $('fileInput').files[0];
+      let base64File = "", mimeType = "", fileName = "";
       if (f) {
         if (f.size > 5 * 1024 * 1024) throw new Error("File size limit is 5MB");
-        attachmentBase64 = await fileToDataUrl(f);
-        attachmentMime = f.type || "";
-        attachmentName = f.name || "";
+        base64File = await toBase64(f);
+        mimeType = f.type || "";
+        fileName = f.name || "";
       }
 
       const payload = {
-        userId: userProfile?.userId || "guest",
-        name: userProfile?.displayName || "Guest",
-        leaveType,
-        otherSpecify,
+        userId: userProfile?.userId || "",
+        name: userProfile?.displayName || "",
+        pictureUrl: userProfile?.pictureUrl || "",
+        leaveType: type,
+        otherSpecify: otherSpec,
         startDate,
         endDate,
-        dayPart: duration,
+        dayPart: $('durationValue').value || "Full Day",
         reason,
-        attachmentBase64,
-        attachmentMime,
-        attachmentName
+        attachmentBase64: base64File,
+        attachmentMime: mimeType,
+        attachmentName: fileName
       };
 
-      // ใช้ text/plain เพื่อเลี่ยง preflight ง่าย + อ่านผลได้
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      });
+      // ✅ POST แบบ form submit เพื่อให้ backend redirect เฉพาะตอน save สำเร็จ (confirm 100%)
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = `${API_URL}?action=submit_leave`;
+      form.style.display = "none";
 
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || "Submit failed");
+      const input = document.createElement("input");
+      input.name = "payload";
+      input.value = JSON.stringify(payload);
+      form.appendChild(input);
 
-      const requestId = json.requestId || "";
-      window.location.href = `${SUCCESS_URL}?ok=1&requestId=${encodeURIComponent(requestId)}`;
+      // backend จะใช้ SUCCESS_URL จาก Script Properties
+      document.body.appendChild(form);
+      form.submit();
+
     } catch (e) {
-      alert("❌ Error: " + (e.message || e));
-    } finally {
-      setLoading(false);
+      alert("❌ " + (e.message || e));
+      $('loader').classList.add('hidden');
+      $('loader').classList.remove('flex');
     }
   }
 
   async function init() {
     await liff.init({ liffId: LIFF_ID });
-
-    if (!liff.isLoggedIn()) {
-      liff.login({ redirectUri: window.location.href });
-      return;
-    }
+    if (!liff.isLoggedIn()) { liff.login(); return; }
 
     userProfile = await liff.getProfile();
-    document.getElementById("userGreet").textContent = `Hi, ${userProfile.displayName}`;
+    $('userGreet').textContent = `Hi, ${userProfile.displayName}`;
+    if (userProfile.pictureUrl) {
+      $('profileImg').src = userProfile.pictureUrl;
+      $('avatarBox').classList.remove('hidden');
+    }
 
-    const today = new Date().toISOString().split("T")[0];
-    document.getElementById("startDate").value = today;
-    document.getElementById("endDate").value = today;
+    const today = new Date().toISOString().split('T')[0];
+    $('startDate').value = today;
+    $('endDate').value = today;
 
     await fetchHolidays();
     validateOnFly();
@@ -266,7 +307,7 @@
 
   init().catch(err => {
     console.error(err);
-    document.getElementById("userGreet").textContent = "Failed to init LIFF";
+    alert("LIFF init error: " + (err.message || err));
   });
 </script>
 </body>
