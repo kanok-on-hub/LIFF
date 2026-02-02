@@ -73,9 +73,9 @@
     <div class="card space-y-2">
       <label class="text-sm font-bold text-slate-700 block">Duration <span class="text-red-500">*</span></label>
       <div class="flex bg-slate-100 p-1 rounded-xl">
-        <button onclick="selectDur(this,'Full Day')" class="dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600">Full Day</button>
-        <button onclick="selectDur(this,'Morning')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Morning</button>
-        <button onclick="selectDur(this,'Afternoon')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Afternoon</button>
+        <button type="button" onclick="selectDur(this,'Full Day')" class="dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600">Full Day</button>
+        <button type="button" onclick="selectDur(this,'Morning')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Morning</button>
+        <button type="button" onclick="selectDur(this,'Afternoon')" class="dur-btn flex-1 py-2 text-sm font-medium text-slate-500">Afternoon</button>
       </div>
       <input type="hidden" id="durationValue" value="Full Day">
     </div>
@@ -111,6 +111,35 @@
   </div>
 </div>
 
+<!-- ✅ Hidden iframe for submit (prevents page navigation) -->
+<iframe id="submitFrame" name="submitFrame" class="hidden"></iframe>
+
+<!-- ✅ Result Modal -->
+<div id="resultModal" class="fixed inset-0 hidden items-center justify-center z-[999]">
+  <div class="absolute inset-0 bg-black/40" onclick="closeResultModal()"></div>
+
+  <div class="relative w-[92%] max-w-md bg-white rounded-3xl p-5 shadow-xl">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div id="modalTitle" class="text-lg font-extrabold text-slate-900">Done</div>
+        <div id="modalSubtitle" class="text-sm text-slate-500 mt-1">—</div>
+      </div>
+      <button type="button" class="w-10 h-10 rounded-full bg-slate-100 text-slate-700 font-bold"
+              onclick="closeResultModal()">✕</button>
+    </div>
+
+    <div id="modalBody" class="mt-4 text-sm text-slate-700 whitespace-pre-wrap"></div>
+
+    <div class="mt-5 flex gap-2">
+      <button type="button" id="modalPrimaryBtn"
+              class="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold"
+              onclick="handleModalPrimary()">OK</button>
+      <button type="button" class="flex-1 bg-slate-100 text-slate-800 py-3 rounded-2xl font-bold"
+              onclick="closeResultModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // ======= SET THESE 2 VALUES ONLY =======
   const LIFF_ID = "2008997153-OdZGJzVg";
@@ -130,6 +159,23 @@
   function hideLoader(){
     $("loader").classList.add("hidden");
     $("loader").classList.remove("flex");
+  }
+
+  function openResultModal(title, subtitle, body) {
+    $("modalTitle").textContent = title || "Done";
+    $("modalSubtitle").textContent = subtitle || "";
+    $("modalBody").textContent = body || "";
+    $("resultModal").classList.remove("hidden");
+    $("resultModal").classList.add("flex");
+  }
+
+  function closeResultModal() {
+    $("resultModal").classList.add("hidden");
+    $("resultModal").classList.remove("flex");
+  }
+
+  function handleModalPrimary() {
+    try { liff.closeWindow(); } catch(e) { closeResultModal(); }
   }
 
   function selectType(btn, val) {
@@ -166,7 +212,7 @@
   async function fetchHolidays() {
     // optional: if blocked by CORS, it will just ignore holidays
     try {
-      const res = await fetch(API_URL + "?action=get_holidays");
+      const res = await fetch(API_URL + "?action=get_holidays&t=" + Date.now());
       const data = await res.json();
       companyHolidays = Array.isArray(data) ? data : [];
     } catch (e) {
@@ -221,11 +267,13 @@
     return true;
   }
 
+  // ✅ Submit via hidden iframe (no navigation away)
   function buildAndSubmitForm(action, extraFields) {
     const form = document.createElement("form");
     form.method = "POST";
     form.action = `${API_URL}?action=${encodeURIComponent(action)}`;
     form.enctype = "multipart/form-data";
+    form.target = "submitFrame";
     form.style.display = "none";
 
     const add = (k, v) => {
@@ -236,29 +284,23 @@
       form.appendChild(input);
     };
 
-    // Mandatory for backend
     add("action", action);
-
-    // Append extra fields
     Object.keys(extraFields || {}).forEach(k => add(k, extraFields[k]));
 
-    // Include file (IMPORTANT: must be inside the form)
+    // Move real file input into the form so it is included
     const fileInput = $("fileInput");
-    const fileClone = fileInput.cloneNode(true);
-    // cannot programmatically set file for clone; so we must move the real input into the form
     form.appendChild(fileInput);
 
     document.body.appendChild(form);
     form.submit();
 
-    // Put back file input to UI container after submit attempt (best effort)
-    // (Usually redirect happens immediately; still safe)
+    // Put file input back into UI after submit
     setTimeout(() => {
       const holder = document.getElementById("fileCard");
       if (holder && !holder.contains(fileInput)) holder.appendChild(fileInput);
-      // restore onchange handler
       fileInput.onchange = handleFileChange;
-    }, 500);
+      document.body.removeChild(form);
+    }, 300);
   }
 
   async function handleSubmit() {
@@ -286,47 +328,46 @@
       endDate,
       dayPart: $('durationValue').value || "Full Day",
       reason
-      // file is attached via <input type="file" name="file"> (below)
     });
   }
+
+  // ✅ Receive result from backend via postMessage
+  window.addEventListener("message", (event) => {
+    if (event.origin !== "https://script.google.com") return;
+
+    const data = event.data || {};
+    if (!data || data.app !== "leave_backend") return;
+
+    hideLoader();
+
+    if (data.ok) {
+      openResultModal(
+        data.mode === "approve" ? "Approval Updated ✅" : "Submitted ✅",
+        data.mode === "approve" ? (data.status || "Updated") : "Your request has been submitted",
+        `RequestId: ${data.requestId || "-"}`
+      );
+    } else {
+      openResultModal(
+        "Failed ❌",
+        "Please try again",
+        data.error ? String(data.error) : "Unknown error"
+      );
+    }
+  });
 
   async function handleApproveFlowIfAny() {
     const params = new URLSearchParams(location.search);
     const mode = params.get("mode");
     const requestId = params.get("requestId");
     const decision = params.get("decision");
-    const ok = params.get("ok");
-    const status = params.get("status");
-    const error = params.get("error");
-
-    if (ok === "1") {
-      // success redirect
-      if (mode === "approve") {
-        $("title").textContent = "Leave Approval";
-        $("userGreet").textContent = status ? `✅ ${status}` : "✅ Updated";
-        alert(`✅ Status updated\nRequestId: ${requestId || "-"}`);
-        try { liff.closeWindow(); } catch(e) {}
-      } else {
-        alert(`✅ Submitted\nRequestId: ${requestId || "-"}`);
-        try { liff.closeWindow(); } catch(e) {}
-      }
-      return;
-    }
-
-    if (ok === "0") {
-      alert(`❌ Submit failed\n${error || "Unknown error"}`);
-      return;
-    }
 
     if (mode === "approve") {
-      // Auto approve/reject by POSTing to backend (no CORS needed because redirect is done by backend)
       if (!requestId || !decision) return;
 
       $("title").textContent = "Leave Approval";
       $("userGreet").textContent = "Processing decision...";
       showLoader("Approving...");
 
-      // get profile for actorUserId
       const profile = await liff.getProfile();
       buildAndSubmitForm("approve_leave", {
         requestId,
@@ -347,7 +388,7 @@
       $('avatarBox').classList.remove('hidden');
     }
 
-    // Name the file input as "file" to match backend parser
+    // Optional: name of file field (backend now accepts any, but keep "file")
     $("fileInput").setAttribute("name", "file");
 
     const today = new Date().toISOString().split('T')[0];
