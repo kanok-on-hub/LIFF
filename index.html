@@ -32,8 +32,9 @@
     </div>
   </div>
 
-  <!-- ✅ No iframe. Submit as _self to Apps Script; backend redirects back with query result -->
-  <form id="leaveForm" class="px-5 space-y-6" enctype="multipart/form-data" method="POST">
+  <!-- ✅ Persistent form (IMPORTANT: file input stays inside, no moving across DOM) -->
+  <form id="leaveForm" class="px-5 space-y-6" enctype="multipart/form-data" target="submitFrame" method="POST">
+    <!-- hidden fields used for backend -->
     <input type="hidden" name="action" id="f_action">
     <input type="hidden" name="requestId" id="f_requestId">
     <input type="hidden" name="userId" id="f_userId">
@@ -45,8 +46,12 @@
     <input type="hidden" name="endDate" id="f_endDate">
     <input type="hidden" name="dayPart" id="f_dayPart">
     <input type="hidden" name="reason" id="f_reason">
+
+    <!-- approve flow only -->
     <input type="hidden" name="decision" id="f_decision">
     <input type="hidden" name="actorUserId" id="f_actorUserId">
+
+    <!-- ======= UI ======= -->
 
     <div class="space-y-3">
       <label class="text-sm font-bold text-slate-700 ml-1">Leave Type <span class="text-red-500">*</span></label>
@@ -108,8 +113,11 @@
           <p class="text-[10px] text-slate-400 italic">Required if Sick Leave ≥ 3 working days</p>
         </div>
       </div>
+
+      <!-- ✅ IMPORTANT: file input stays here permanently -->
       <input type="file" id="fileInput" name="file" class="hidden" onchange="handleFileChange()" accept="image/*,application/pdf">
     </div>
+
   </form>
 
   <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
@@ -124,11 +132,17 @@
   </div>
 </div>
 
+<!-- Hidden iframe for submit -->
+<iframe id="submitFrame" name="submitFrame" class="hidden"></iframe>
+
+<!-- ✅ Minimal Success Modal -->
 <div id="successModal" class="fixed inset-0 hidden items-center justify-center z-[999]">
   <div class="absolute inset-0 bg-black/40"></div>
+
   <div class="relative w-[92%] max-w-sm bg-white rounded-3xl p-6 shadow-xl text-center">
-    <div class="text-2xl font-extrabold text-slate-900" id="modalTitle">Saved Successfully ✅</div>
-    <div class="mt-2 text-sm text-slate-600" id="modalText">Your request has been submitted.</div>
+    <div class="text-2xl font-extrabold text-slate-900">Saved Successfully ✅</div>
+    <div class="mt-2 text-sm text-slate-600">Your request has been submitted.</div>
+
     <button type="button"
             class="mt-6 w-full bg-blue-600 text-white py-3 rounded-2xl font-bold text-lg"
             onclick="doneAndExit()">
@@ -138,11 +152,16 @@
 </div>
 
 <script>
+  // ======= SET THESE 2 VALUES ONLY =======
   const LIFF_ID = "2008997153-OdZGJzVg";
   const API_URL = "https://script.google.com/macros/s/AKfycby9WkktTkhrTLrtCYdNVDuedfewbuWgAkR5v3oV2u2a9htVhzyZzf2Ihdu3yw8sFk32qQ/exec";
+  // ======================================
 
   let companyHolidays = [];
   let userProfile = null;
+
+  // requestId used for verification when no postMessage received
+  let pendingRequestId = "";
 
   const $ = (id) => document.getElementById(id);
 
@@ -165,15 +184,14 @@
     });
   }
 
-  function openSuccessModal(title, text) {
-    $("modalTitle").textContent = title || "Saved Successfully ✅";
-    $("modalText").textContent = text || "Your request has been submitted.";
+  function openSuccessModal() {
     $("successModal").classList.remove("hidden");
     $("successModal").classList.add("flex");
   }
 
   function doneAndExit() {
     try { liff.closeWindow(); } catch(e) {
+      // fallback (if not in LIFF)
       $("successModal").classList.add("hidden");
       $("successModal").classList.remove("flex");
     }
@@ -267,19 +285,57 @@
     return true;
   }
 
+  // ✅ New: submit using persistent form (no moving file input)
   function setHidden(id, val) {
     const el = document.getElementById(id);
     if (el) el.value = (val == null ? "" : String(val));
   }
 
-  function submitToBackend(action, extraFields) {
+  function submitViaPersistentForm(action, extraFields) {
     const form = document.getElementById("leaveForm");
+    if (!form) {
+      alert("leaveForm not found");
+      hideLoader();
+      return;
+    }
+
     form.action = `${API_URL}?action=${encodeURIComponent(action)}`;
 
     setHidden("f_action", action);
-    Object.keys(extraFields || {}).forEach(k => setHidden("f_" + k, extraFields[k]));
+    Object.keys(extraFields || {}).forEach(k => {
+      setHidden("f_" + k, extraFields[k]);
+    });
 
-    form.submit(); // ✅ navigates to Apps Script, then backend redirects back here
+    form.submit();
+
+    // If no postMessage within 12 sec => verify saved by requestId
+    setTimeout(async () => {
+      const loaderVisible = !document.getElementById("loader").classList.contains("hidden");
+      if (!loaderVisible) return;
+
+      if (!pendingRequestId) {
+        hideLoader();
+        alert("No response (missing requestId).");
+        return;
+      }
+
+      try {
+        const res = await fetch(API_URL + "?action=check_request&requestId=" + encodeURIComponent(pendingRequestId) + "&t=" + Date.now());
+        const data = await res.json();
+
+        if (data && data.ok && data.found) {
+          hideLoader();
+          openSuccessModal();
+          return;
+        }
+
+        hideLoader();
+        alert("No response. Cannot confirm saved. Please try again.");
+      } catch (e) {
+        hideLoader();
+        alert("No response. Verification failed. Please try again.");
+      }
+    }, 12000);
   }
 
   async function handleSubmit() {
@@ -295,11 +351,11 @@
     if (!reason) return alert("Please specify reason");
     if (!validateOnFly()) return alert("Medical Certificate required!");
 
-    const requestId = uuidv4();
+    pendingRequestId = uuidv4();
     showLoader("Submitting...");
 
-    submitToBackend("submit_leave", {
-      requestId,
+    submitViaPersistentForm("submit_leave", {
+      requestId: pendingRequestId,
       userId: userProfile?.userId || "",
       name: userProfile?.displayName || "",
       pictureUrl: userProfile?.pictureUrl || "",
@@ -311,6 +367,23 @@
       reason
     });
   }
+
+  // Receive result from backend via postMessage (hidden iframe)
+  window.addEventListener("message", (event) => {
+    const frame = document.getElementById("submitFrame");
+    if (!frame || event.source !== frame.contentWindow) return;
+
+    const data = event.data || {};
+    if (!data || data.app !== "leave_backend") return;
+
+    hideLoader();
+
+    if (data.ok) {
+      openSuccessModal();
+    } else {
+      alert(data.error ? String(data.error) : "Submit failed");
+    }
+  });
 
   async function handleApproveFlowIfAny() {
     const params = new URLSearchParams(location.search);
@@ -326,35 +399,13 @@
       showLoader("Approving...");
 
       const profile = await liff.getProfile();
+      pendingRequestId = requestId;
 
-      submitToBackend("approve_leave", {
+      submitViaPersistentForm("approve_leave", {
         requestId,
         decision,
         actorUserId: profile.userId
       });
-    }
-  }
-
-  function handleBackendRedirectResultIfAny() {
-    const params = new URLSearchParams(location.search);
-    if (params.get("from") !== "backend") return;
-
-    const ok = params.get("ok") === "1";
-    const mode = params.get("mode") || "";
-    const requestId = params.get("requestId") || "";
-    const error = params.get("error") || "";
-
-    // clean URL
-    const cleanUrl = location.origin + location.pathname;
-    history.replaceState({}, "", cleanUrl);
-
-    hideLoader();
-
-    if (ok) {
-      if (mode === "approve") openSuccessModal("Done ✅", "Decision submitted.");
-      else openSuccessModal("Saved Successfully ✅", "Your request has been submitted.");
-    } else {
-      alert(error || "Operation failed");
     }
   }
 
@@ -375,9 +426,6 @@
 
     await fetchHolidays();
     validateOnFly();
-
-    // ✅ show result if we just got redirected back from backend
-    handleBackendRedirectResultIfAny();
 
     await handleApproveFlowIfAny();
     hideLoader();
