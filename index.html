@@ -32,7 +32,26 @@
     </div>
   </div>
 
-  <div class="px-5 space-y-6" id="formUI">
+  <!-- ✅ Persistent form (IMPORTANT: file input stays inside, no moving across DOM) -->
+  <form id="leaveForm" class="px-5 space-y-6" enctype="multipart/form-data" target="submitFrame" method="POST">
+    <!-- hidden fields used for backend -->
+    <input type="hidden" name="action" id="f_action">
+    <input type="hidden" name="requestId" id="f_requestId">
+    <input type="hidden" name="userId" id="f_userId">
+    <input type="hidden" name="name" id="f_name">
+    <input type="hidden" name="pictureUrl" id="f_pictureUrl">
+    <input type="hidden" name="leaveType" id="f_leaveType">
+    <input type="hidden" name="otherSpecify" id="f_otherSpecify">
+    <input type="hidden" name="startDate" id="f_startDate">
+    <input type="hidden" name="endDate" id="f_endDate">
+    <input type="hidden" name="dayPart" id="f_dayPart">
+    <input type="hidden" name="reason" id="f_reason">
+
+    <!-- approve flow only -->
+    <input type="hidden" name="decision" id="f_decision">
+    <input type="hidden" name="actorUserId" id="f_actorUserId">
+
+    <!-- ======= UI ======= -->
 
     <div class="space-y-3">
       <label class="text-sm font-bold text-slate-700 ml-1">Leave Type <span class="text-red-500">*</span></label>
@@ -94,10 +113,12 @@
           <p class="text-[10px] text-slate-400 italic">Required if Sick Leave ≥ 3 working days</p>
         </div>
       </div>
-      <input type="file" id="fileInput" class="hidden" onchange="handleFileChange()" accept="image/*,application/pdf">
+
+      <!-- ✅ IMPORTANT: file input stays here permanently -->
+      <input type="file" id="fileInput" name="file" class="hidden" onchange="handleFileChange()" accept="image/*,application/pdf">
     </div>
 
-  </div>
+  </form>
 
   <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
     <button id="submitBtn" onclick="handleSubmit()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg">Submit</button>
@@ -264,37 +285,28 @@
     return true;
   }
 
-  function buildAndSubmitForm(action, extraFields) {
-    const form = document.createElement("form");
-    form.method = "POST";
+  // ✅ New: submit using persistent form (no moving file input)
+  function setHidden(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = (val == null ? "" : String(val));
+  }
+
+  function submitViaPersistentForm(action, extraFields) {
+    const form = document.getElementById("leaveForm");
+    if (!form) {
+      alert("leaveForm not found");
+      hideLoader();
+      return;
+    }
+
     form.action = `${API_URL}?action=${encodeURIComponent(action)}`;
-    form.enctype = "multipart/form-data";
-    form.target = "submitFrame";
-    form.style.display = "none";
 
-    const add = (k, v) => {
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = k;
-      input.value = v == null ? "" : String(v);
-      form.appendChild(input);
-    };
+    setHidden("f_action", action);
+    Object.keys(extraFields || {}).forEach(k => {
+      setHidden("f_" + k, extraFields[k]);
+    });
 
-    add("action", action);
-    Object.keys(extraFields || {}).forEach(k => add(k, extraFields[k]));
-
-    const fileInput = $("fileInput");
-    form.appendChild(fileInput);
-
-    document.body.appendChild(form);
     form.submit();
-
-    setTimeout(() => {
-      const holder = document.getElementById("fileCard");
-      if (holder && !holder.contains(fileInput)) holder.appendChild(fileInput);
-      fileInput.onchange = handleFileChange;
-      try { document.body.removeChild(form); } catch(e) {}
-    }, 300);
 
     // If no postMessage within 12 sec => verify saved by requestId
     setTimeout(async () => {
@@ -342,7 +354,7 @@
     pendingRequestId = uuidv4();
     showLoader("Submitting...");
 
-    buildAndSubmitForm("submit_leave", {
+    submitViaPersistentForm("submit_leave", {
       requestId: pendingRequestId,
       userId: userProfile?.userId || "",
       name: userProfile?.displayName || "",
@@ -367,7 +379,6 @@
     hideLoader();
 
     if (data.ok) {
-      // ✅ Success => show minimal modal and exit on Done
       openSuccessModal();
     } else {
       alert(data.error ? String(data.error) : "Submit failed");
@@ -390,7 +401,7 @@
       const profile = await liff.getProfile();
       pendingRequestId = requestId;
 
-      buildAndSubmitForm("approve_leave", {
+      submitViaPersistentForm("approve_leave", {
         requestId,
         decision,
         actorUserId: profile.userId
@@ -408,8 +419,6 @@
       $('profileImg').src = userProfile.pictureUrl;
       $('avatarBox').classList.remove('hidden');
     }
-
-    $("fileInput").setAttribute("name", "file");
 
     const today = new Date().toISOString().split('T')[0];
     $('startDate').value = today;
