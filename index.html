@@ -114,47 +114,19 @@
 <!-- Hidden iframe for submit -->
 <iframe id="submitFrame" name="submitFrame" class="hidden"></iframe>
 
-<!-- Result Modal -->
-<div id="resultModal" class="fixed inset-0 hidden items-center justify-center z-[999]">
-  <div class="absolute inset-0 bg-black/40" onclick="closeResultModal()"></div>
+<!-- ✅ Minimal Success Modal -->
+<div id="successModal" class="fixed inset-0 hidden items-center justify-center z-[999]">
+  <div class="absolute inset-0 bg-black/40"></div>
 
-  <div class="relative w-[92%] max-w-md bg-white rounded-3xl p-5 shadow-xl">
-    <div class="flex items-start justify-between gap-3">
-      <div>
-        <div id="modalTitle" class="text-lg font-extrabold text-slate-900">Done</div>
-        <div id="modalSubtitle" class="text-sm text-slate-500 mt-1">—</div>
-      </div>
-      <button type="button" class="w-10 h-10 rounded-full bg-slate-100 text-slate-700 font-bold"
-              onclick="closeResultModal()">✕</button>
-    </div>
+  <div class="relative w-[92%] max-w-sm bg-white rounded-3xl p-6 shadow-xl text-center">
+    <div class="text-2xl font-extrabold text-slate-900">Saved Successfully ✅</div>
+    <div class="mt-2 text-sm text-slate-600">Your request has been submitted.</div>
 
-    <div class="mt-4 space-y-3">
-      <div id="modalSummary" class="text-sm text-slate-700 whitespace-pre-wrap"></div>
-
-      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
-        <div class="text-[11px] font-bold text-slate-500 uppercase">RequestId</div>
-        <div class="flex items-center justify-between gap-2 mt-1">
-          <div id="modalRequestId" class="font-mono text-sm font-bold text-slate-900 break-all">-</div>
-          <button type="button" onclick="copyRequestIdOnly()"
-                  class="shrink-0 px-3 py-2 rounded-xl bg-white border border-slate-200 font-bold text-sm">
-            Copy
-          </button>
-        </div>
-        <button type="button" onclick="copyRequestIdAndSummary()"
-                class="mt-2 w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-bold text-sm">
-          Copy RequestId + Summary
-        </button>
-        <div id="copyToast" class="mt-2 text-[12px] text-green-600 font-bold hidden">Copied ✅</div>
-      </div>
-    </div>
-
-    <div class="mt-5 flex gap-2">
-      <button type="button" id="modalPrimaryBtn"
-              class="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold"
-              onclick="handleModalPrimary()">OK</button>
-      <button type="button" class="flex-1 bg-slate-100 text-slate-800 py-3 rounded-2xl font-bold"
-              onclick="closeResultModal()">Close</button>
-    </div>
+    <button type="button"
+            class="mt-6 w-full bg-blue-600 text-white py-3 rounded-2xl font-bold text-lg"
+            onclick="doneAndExit()">
+      Done
+    </button>
   </div>
 </div>
 
@@ -170,9 +142,6 @@
   // requestId used for verification when no postMessage received
   let pendingRequestId = "";
 
-  // cached summary info for modal copy
-  let lastSummaryText = "";
-
   const $ = (id) => document.getElementById(id);
 
   function showLoader(msg){
@@ -185,28 +154,6 @@
     $("loader").classList.remove("flex");
   }
 
-  function openResultModal(title, subtitle, summaryText, requestId) {
-    $("modalTitle").textContent = title || "Done";
-    $("modalSubtitle").textContent = subtitle || "";
-    $("modalSummary").textContent = summaryText || "";
-    $("modalRequestId").textContent = requestId || "-";
-    lastSummaryText = summaryText || "";
-    $("copyToast").classList.add("hidden");
-
-    $("resultModal").classList.remove("hidden");
-    $("resultModal").classList.add("flex");
-  }
-
-  function closeResultModal() {
-    $("resultModal").classList.add("hidden");
-    $("resultModal").classList.remove("flex");
-    $("copyToast").classList.add("hidden");
-  }
-
-  function handleModalPrimary() {
-    try { liff.closeWindow(); } catch(e) { closeResultModal(); }
-  }
-
   function uuidv4() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
@@ -216,49 +163,17 @@
     });
   }
 
-  async function copyText(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-      $("copyToast").classList.remove("hidden");
-      setTimeout(() => $("copyToast").classList.add("hidden"), 1200);
-      return true;
-    } catch (e) {
-      // fallback
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-        $("copyToast").classList.remove("hidden");
-        setTimeout(() => $("copyToast").classList.add("hidden"), 1200);
-        return true;
-      } catch (e2) {
-        alert("Copy failed. Please long-press and copy manually.");
-        return false;
-      }
+  function openSuccessModal() {
+    $("successModal").classList.remove("hidden");
+    $("successModal").classList.add("flex");
+  }
+
+  function doneAndExit() {
+    try { liff.closeWindow(); } catch(e) {
+      // fallback (if not in LIFF)
+      $("successModal").classList.add("hidden");
+      $("successModal").classList.remove("flex");
     }
-  }
-
-  function copyRequestIdOnly() {
-    const rid = $("modalRequestId").textContent || "";
-    if (!rid || rid === "-") return;
-    copyText(`RequestId: ${rid}`);
-  }
-
-  function copyRequestIdAndSummary() {
-    const rid = $("modalRequestId").textContent || "";
-    if (!rid || rid === "-") return;
-
-    const txt = [
-      `RequestId: ${rid}`,
-      lastSummaryText ? lastSummaryText : ""
-    ].filter(Boolean).join("\n");
-
-    copyText(txt);
   }
 
   function selectType(btn, val) {
@@ -349,26 +264,6 @@
     return true;
   }
 
-  function buildSummaryText() {
-    const type = $('leaveTypeValue').value;
-    const otherSpec = $('otherSpecify').value.trim();
-    const startDate = $('startDate').value;
-    const endDate = $('endDate').value;
-    const duration = $('durationValue').value || "Full Day";
-    const days = (startDate && endDate) ? calcWorkingDays(startDate, endDate) : 0;
-    const f = $('fileInput').files[0];
-
-    const typeText = (type === "Other") ? `Other (${otherSpec})` : type;
-
-    return [
-      `Type: ${typeText || "-"}`,
-      `Date: ${startDate || "-"} → ${endDate || "-"}`,
-      `Duration: ${duration}`,
-      `Working Days: ${days}`,
-      `Attachment: ${f ? "Uploaded ✅" : "None"}`
-    ].join("\n");
-  }
-
   function buildAndSubmitForm(action, extraFields) {
     const form = document.createElement("form");
     form.method = "POST";
@@ -408,7 +303,7 @@
 
       if (!pendingRequestId) {
         hideLoader();
-        openResultModal("No response ❌", "Backend did not return result", "Missing requestId for verification.", "-");
+        alert("No response (missing requestId).");
         return;
       }
 
@@ -418,26 +313,15 @@
 
         if (data && data.ok && data.found) {
           hideLoader();
-          const summary = buildSummaryText();
-          openResultModal("Saved Successfully ✅", "Sent to approver on LINE", summary, pendingRequestId);
+          openSuccessModal();
           return;
         }
 
         hideLoader();
-        openResultModal(
-          "No response ❌",
-          "Cannot confirm saved",
-          `RequestId: ${pendingRequestId}\nPlease try again or contact admin.`,
-          pendingRequestId
-        );
+        alert("No response. Cannot confirm saved. Please try again.");
       } catch (e) {
         hideLoader();
-        openResultModal(
-          "No response ❌",
-          "Cannot verify saved",
-          `RequestId: ${pendingRequestId}\nVerification request failed.`,
-          pendingRequestId
-        );
+        alert("No response. Verification failed. Please try again.");
       }
     }, 12000);
   }
@@ -456,7 +340,6 @@
     if (!validateOnFly()) return alert("Medical Certificate required!");
 
     pendingRequestId = uuidv4();
-
     showLoader("Submitting...");
 
     buildAndSubmitForm("submit_leave", {
@@ -473,7 +356,7 @@
     });
   }
 
-  // Receive result from backend via postMessage
+  // Receive result from backend via postMessage (hidden iframe)
   window.addEventListener("message", (event) => {
     const frame = document.getElementById("submitFrame");
     if (!frame || event.source !== frame.contentWindow) return;
@@ -484,31 +367,10 @@
     hideLoader();
 
     if (data.ok) {
-      if (data.requestId) pendingRequestId = data.requestId;
-
-      if (data.mode === "approve") {
-        openResultModal(
-          "Approval Updated ✅",
-          data.status || "Updated",
-          `RequestId: ${pendingRequestId}\nStatus: ${data.status || "-"}`,
-          pendingRequestId
-        );
-      } else {
-        const summary = buildSummaryText();
-        openResultModal(
-          "Saved Successfully ✅",
-          "Sent to approver on LINE",
-          summary,
-          pendingRequestId
-        );
-      }
+      // ✅ Success => show minimal modal and exit on Done
+      openSuccessModal();
     } else {
-      openResultModal(
-        "Failed ❌",
-        "Please try again",
-        data.error ? String(data.error) : "Unknown error",
-        pendingRequestId || "-"
-      );
+      alert(data.error ? String(data.error) : "Submit failed");
     }
   });
 
