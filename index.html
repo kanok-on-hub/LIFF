@@ -2,11 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
   <title>Leave Request</title>
+
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
     body { font-family: 'Inter', sans-serif; background:#f8fafc; color:#0f172a; -webkit-tap-highlight-color: transparent; }
     .card { background:#fff; border-radius: 1rem; border:1px solid #e2e8f0; padding: 1rem; }
@@ -14,24 +17,31 @@
     .type-btn.selected { border-color:#2563eb; background:#eff6ff; border-width:2px; }
     .input { background:#f8fafc; border:1px solid #e2e8f0; border-radius:.75rem; padding:.75rem; width:100%; outline:none; }
     .err { border:2px solid #ef4444 !important; background:#fef2f2 !important; }
+
+    /* Modal animation */
+    .modal-enter { transform: translateY(12px); opacity: 0; }
+    .modal-enter-active { transform: translateY(0px); opacity: 1; transition: all .18s ease; }
   </style>
 </head>
 
 <body class="pb-28">
 <div class="max-w-md mx-auto">
 
+  <!-- Header -->
   <div class="bg-white px-6 pt-10 pb-6 rounded-b-[2.5rem] shadow-sm border-b border-gray-100 mb-6">
     <div class="flex items-center gap-4">
       <div id="avatarBox" class="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-50 hidden">
-        <img id="profileImg" src="" class="w-full h-full object-cover">
+        <img id="profileImg" src="" class="w-full h-full object-cover" alt="profile">
       </div>
-      <div>
+      <div class="min-w-0">
         <h1 id="title" class="text-xl font-bold">Leave Request 📝</h1>
-        <p id="userGreet" class="text-slate-500 text-sm font-medium">Loading...</p>
+        <p id="userGreet" class="text-slate-500 text-sm font-medium truncate">Loading...</p>
+        <p id="modeHint" class="text-slate-400 text-xs font-medium mt-1 hidden"></p>
       </div>
     </div>
   </div>
 
+  <!-- Form UI -->
   <div class="px-5 space-y-6" id="formUI">
 
     <div class="space-y-3">
@@ -46,7 +56,7 @@
     </div>
 
     <div id="otherField" class="hidden space-y-2">
-      <label class="text-sm font-bold text-blue-600 ml-1 italic">Please specify Other type *</label>
+      <label class="text-sm font-bold text-blue-600 ml-1 italic">Please specify Other type <span class="text-red-500">*</span></label>
       <input type="text" id="otherSpecify" class="input" placeholder="e.g. Ordination">
     </div>
 
@@ -67,7 +77,9 @@
         </div>
       </div>
 
-      <div class="text-[10px] text-slate-400 italic font-medium">* Weekends & Company Holidays excluded (holiday list optional).</div>
+      <div class="text-[10px] text-slate-400 italic font-medium">
+        * Weekends & Company Holidays excluded (holiday list optional).
+      </div>
     </div>
 
     <div class="card space-y-2">
@@ -85,111 +97,308 @@
       <textarea id="reason" rows="3" class="input" placeholder="Please specify reason..." oninput="validateOnFly()"></textarea>
     </div>
 
-    <div id="fileCard" class="card border-dashed border-2 flex items-center justify-between cursor-pointer"
+    <div id="fileCard"
+         class="card border-dashed border-2 flex items-center justify-between cursor-pointer"
          onclick="document.getElementById('fileInput').click()">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">📎</div>
-        <div>
-          <p id="fileTitle" class="text-sm font-bold text-slate-700">Attachment (Optional)</p>
+        <div class="min-w-0">
+          <p id="fileTitle" class="text-sm font-bold text-slate-700 truncate">Attachment (Optional)</p>
           <p class="text-[10px] text-slate-400 italic">Required if Sick Leave ≥ 3 working days</p>
         </div>
       </div>
       <input type="file" id="fileInput" class="hidden" onchange="handleFileChange()" accept="image/*,application/pdf">
     </div>
 
+    <!-- Inline action buttons for Edit mode -->
+    <div id="editActions" class="hidden">
+      <div class="grid grid-cols-2 gap-3">
+        <button type="button"
+                class="w-full bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold"
+                onclick="confirmCancel(currentRequestId)">
+          Cancel
+        </button>
+        <button type="button"
+                class="w-full bg-blue-600 text-white py-3 rounded-2xl font-bold"
+                onclick="handleSubmit()">
+          Update
+        </button>
+      </div>
+      <p class="text-xs text-slate-400 mt-2 text-center">Edits are allowed only while status is <b>SUBMITTED</b>.</p>
+    </div>
+
   </div>
 
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-    <button id="submitBtn" onclick="handleSubmit()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg">Submit</button>
+  <!-- Bottom bar (Submit for normal mode only) -->
+  <div id="bottomBar" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+    <button id="submitBtn" onclick="handleSubmit()"
+            class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg">
+      Submit
+    </button>
   </div>
 </div>
 
+<!-- Loader -->
 <div id="loader" class="fixed inset-0 bg-white/80 backdrop-blur-sm hidden items-center justify-center z-50">
   <div class="text-center">
     <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
     <div class="font-bold text-slate-600" id="loaderText">Processing...</div>
+    <div class="text-xs text-slate-500 mt-2" id="loaderSubText"></div>
   </div>
 </div>
 
-<!-- Hidden iframe for submit -->
-<iframe id="submitFrame" name="submitFrame" class="hidden"></iframe>
-
-<!-- Result Modal -->
-<div id="resultModal" class="fixed inset-0 hidden items-center justify-center z-[999]">
-  <div class="absolute inset-0 bg-black/40" onclick="closeResultModal()"></div>
-
-  <div class="relative w-[92%] max-w-md bg-white rounded-3xl p-5 shadow-xl">
-    <div class="flex items-start justify-between gap-3">
-      <div>
-        <div id="modalTitle" class="text-lg font-extrabold text-slate-900">Done</div>
-        <div id="modalSubtitle" class="text-sm text-slate-500 mt-1">—</div>
+<!-- Modal -->
+<div id="modalOverlay" class="fixed inset-0 bg-black/40 hidden z-50">
+  <div class="min-h-full flex items-end sm:items-center justify-center p-4">
+    <div id="modalCard"
+         class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-5 modal-enter">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <div id="modalTitle" class="text-lg font-extrabold text-slate-900">Title</div>
+          <div id="modalSubtitle" class="text-sm text-slate-500 font-medium mt-1">Subtitle</div>
+        </div>
+        <button type="button" class="text-slate-400 hover:text-slate-600" onclick="hideModal()">
+          ✕
+        </button>
       </div>
-      <button type="button" class="w-10 h-10 rounded-full bg-slate-100 text-slate-700 font-bold"
-              onclick="closeResultModal()">✕</button>
-    </div>
 
-    <div id="modalBody" class="mt-4 text-sm text-slate-700 whitespace-pre-wrap"></div>
+      <div id="modalBody" class="mt-4 space-y-2"></div>
 
-    <div class="mt-5 flex gap-2">
-      <button type="button" id="modalPrimaryBtn"
-              class="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold"
-              onclick="handleModalPrimary()">OK</button>
-      <button type="button" class="flex-1 bg-slate-100 text-slate-800 py-3 rounded-2xl font-bold"
-              onclick="closeResultModal()">Close</button>
+      <div id="modalActions" class="mt-5 space-y-2"></div>
     </div>
   </div>
 </div>
+
+<!-- Hidden iframe target for form submission -->
+<iframe id="submitFrame" name="submitFrame" class="hidden" title="submitFrame"></iframe>
 
 <script>
   // ======= SET THESE 2 VALUES ONLY =======
   const LIFF_ID = "2008997153-OdZGJzVg";
-  const API_URL = "https://script.google.com/macros/s/AKfycby9WkktTkhrTLrtCYdNVDuedfewbuWgAkR5v3oV2u2a9htVhzyZzf2Ihdu3yw8sFk32qQ/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycby9WkktTkhrTLrtCYdNVDuedfewbuWgAkR5v3oV2u2a9htVhzyZzf2Ihdu3yw8sFk32qQ/exec"; // .../exec
   // ======================================
 
   let companyHolidays = [];
   let userProfile = null;
 
-  // ✅ requestId used for verification when no postMessage received
-  let pendingRequestId = "";
+  // Page state
+  let currentMode = "submit";   // submit | approve | edit | cancel
+  let currentRequestId = "";
+  let awaitingPostMessage = false;
+  let postMessageTimer = null;
+
+  // For edit: keep fetched attachment url (if any)
+  let loadedAttachmentUrl = "";
 
   const $ = (id) => document.getElementById(id);
 
-  function showLoader(msg){
+  // ---------- Loader ----------
+  function showLoader(msg, sub){
     $("loaderText").textContent = msg || "Processing...";
+    $("loaderSubText").textContent = sub || "";
     $("loader").classList.remove("hidden");
     $("loader").classList.add("flex");
   }
   function hideLoader(){
     $("loader").classList.add("hidden");
     $("loader").classList.remove("flex");
+    $("loaderSubText").textContent = "";
   }
 
-  function openResultModal(title, subtitle, body) {
-    $("modalTitle").textContent = title || "Done";
+  // ---------- Modal Core ----------
+  function showModal({ title, subtitle, rows = [], actions = [] }) {
+    $("modalTitle").textContent = title || "";
     $("modalSubtitle").textContent = subtitle || "";
-    $("modalBody").textContent = body || "";
-    $("resultModal").classList.remove("hidden");
-    $("resultModal").classList.add("flex");
+    const body = $("modalBody");
+    const act = $("modalActions");
+
+    body.innerHTML = "";
+    act.innerHTML = "";
+
+    rows.forEach(r => body.appendChild(renderRow(r)));
+    actions.forEach(a => act.appendChild(renderAction(a)));
+
+    $("modalOverlay").classList.remove("hidden");
+
+    const card = $("modalCard");
+    card.classList.remove("modal-enter-active");
+    card.classList.add("modal-enter");
+    requestAnimationFrame(() => {
+      card.classList.add("modal-enter-active");
+      card.classList.remove("modal-enter");
+    });
+  }
+  function hideModal() {
+    $("modalOverlay").classList.add("hidden");
   }
 
-  function closeResultModal() {
-    $("resultModal").classList.add("hidden");
-    $("resultModal").classList.remove("flex");
+  function renderRow({ label, value, mono=false, badge=false, link=false }) {
+    const wrap = document.createElement("div");
+    wrap.className = "flex items-start justify-between gap-3";
+
+    const l = document.createElement("div");
+    l.className = "text-xs font-bold text-slate-400 uppercase tracking-wide";
+    l.textContent = label || "";
+    wrap.appendChild(l);
+
+    const v = document.createElement("div");
+    if (badge) {
+      v.className = "text-xs font-extrabold px-2 py-1 rounded-full bg-slate-100 text-slate-700";
+      v.textContent = value == null ? "" : String(value);
+    } else if (link) {
+      v.className = "text-right max-w-[70%]";
+      const a = document.createElement("a");
+      a.href = String(value || "#");
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.className = "text-sm font-bold text-blue-600 underline break-all";
+      a.textContent = "View";
+      v.appendChild(a);
+    } else {
+      v.className = "text-sm font-semibold text-slate-800 text-right max-w-[70%] break-words";
+      if (mono) v.classList.add("font-mono");
+      v.textContent = value == null ? "" : String(value);
+    }
+
+    wrap.appendChild(v);
+    return wrap;
   }
 
-  function handleModalPrimary() {
-    try { liff.closeWindow(); } catch(e) { closeResultModal(); }
+  function renderAction({ label, kind="primary", onClick, disabled=false }) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = label || "OK";
+    btn.disabled = !!disabled;
+
+    const base = "w-full py-3 rounded-2xl font-extrabold text-sm transition";
+    const styles = {
+      primary: "bg-blue-600 text-white hover:bg-blue-700",
+      secondary: "bg-slate-100 text-slate-800 hover:bg-slate-200",
+      danger: "bg-red-600 text-white hover:bg-red-700"
+    };
+    btn.className = `${base} ${styles[kind] || styles.primary} ${disabled ? "opacity-60" : ""}`;
+    btn.onclick = onClick || (() => hideModal());
+    return btn;
   }
 
-  function uuidv4() {
-    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-      const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15);
-      const v = c === "x" ? r : (r & 3) | 8;
-      return v.toString(16);
+  function copyText(t) {
+    const text = String(t || "");
+    if (!text) return;
+    navigator.clipboard?.writeText(text).then(() => {
+      const old = $("modalSubtitle").textContent;
+      $("modalSubtitle").textContent = "Copied to clipboard ✅";
+      setTimeout(() => $("modalSubtitle").textContent = old, 900);
+    }).catch(() => {});
+  }
+
+  // ---------- Modal Presets (EN copy) ----------
+  function modalValidationError(message) {
+    showModal({
+      title: "Missing information",
+      subtitle: message || "Please review the form and try again.",
+      rows: [],
+      actions: [{ label: "OK", kind: "primary", onClick: () => hideModal() }]
     });
   }
 
+  function modalServerError(error, requestId) {
+    showModal({
+      title: "Something went wrong",
+      subtitle: "We couldn’t complete your request. Please try again.",
+      rows: [
+        ...(requestId ? [{ label: "Request ID", value: requestId, mono: true }] : []),
+        { label: "Error", value: error || "unknown_error" }
+      ],
+      actions: [
+        { label: "Close", kind: "primary", onClick: () => hideModal() }
+      ]
+    });
+  }
+
+  function modalApproveSuccess(requestId, status) {
+    showModal({
+      title: "Status updated ✅",
+      subtitle: "Thank you. The request has been updated.",
+      rows: [
+        { label: "Request ID", value: requestId || "-", mono: true },
+        { label: "Status", value: status || "UPDATED", badge: true }
+      ],
+      actions: [
+        { label: "Close", kind: "primary", onClick: () => { hideModal(); try { liff.closeWindow(); } catch(e) {} } }
+      ]
+    });
+  }
+
+  function modalCancelSuccess(requestId, status) {
+    showModal({
+      title: "Cancelled ✅",
+      subtitle: "Your leave request has been cancelled.",
+      rows: [
+        { label: "Request ID", value: requestId || "-", mono: true },
+        { label: "Status", value: status || "CANCELLED", badge: true }
+      ],
+      actions: [
+        { label: "Copy Request ID", kind: "secondary", onClick: () => copyText(requestId) },
+        { label: "Close", kind: "primary", onClick: () => { hideModal(); try { liff.closeWindow(); } catch(e) {} } }
+      ]
+    });
+  }
+
+  function modalSavedSuccess({ mode, requestId, summary, canEditCancel }) {
+    const title = mode === "edit" ? "Updated successfully ✅" : "Saved successfully ✅";
+    const subtitle = mode === "edit"
+      ? "Your updates have been saved and sent to the approver."
+      : "Your request has been sent to the approver.";
+
+    const rows = [
+      { label: "Request ID", value: requestId || "-", mono: true },
+      { label: "Leave type", value: summary.leaveTypeLabel || "-" },
+      { label: "Dates", value: `${summary.startDate || "-"} → ${summary.endDate || "-"}` },
+      { label: "Duration", value: summary.dayPart || "-", badge: true },
+      { label: "Working days", value: summary.days ?? "-", badge: true },
+      { label: "Attachment", value: summary.attachmentText || "-" },
+      ...(summary.attachmentUrl ? [{ label: "Attachment link", value: summary.attachmentUrl, link: true }] : []),
+    ];
+
+    const actions = [
+      { label: "Copy Request ID", kind: "secondary", onClick: () => copyText(requestId) },
+      ...(canEditCancel ? [
+        { label: "Edit", kind: "secondary", onClick: () => { hideModal(); goEdit(requestId); } },
+        { label: "Cancel", kind: "danger", onClick: () => { hideModal(); confirmCancel(requestId); } },
+      ] : []),
+      { label: "Submit another", kind: "secondary", onClick: () => { hideModal(); setModeUI("submit"); resetFormForNew(); } },
+      { label: "Close", kind: "primary", onClick: () => { hideModal(); try { liff.closeWindow(); } catch(e) {} } }
+    ];
+
+    showModal({ title, subtitle, rows, actions });
+  }
+
+  function confirmCancel(reqId) {
+    showModal({
+      title: "Cancel this request?",
+      subtitle: "This action cannot be undone.",
+      rows: [
+        { label: "Request ID", value: reqId || "-", mono: true }
+      ],
+      actions: [
+        { label: "Keep it", kind: "secondary", onClick: () => hideModal() },
+        {
+          label: "Yes, cancel",
+          kind: "danger",
+          onClick: () => {
+            hideModal();
+            showLoader("Cancelling...", "Please keep this screen open.");
+            submitViaIframe("cancel_leave", {
+              requestId: reqId,
+              actorUserId: userProfile?.userId || ""
+            });
+          }
+        }
+      ]
+    });
+  }
+
+  // ---------- Form UI ----------
   function selectType(btn, val) {
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
@@ -212,7 +421,7 @@
   function handleFileChange() {
     const f = $('fileInput').files[0];
     if (f) {
-      $('fileTitle').textContent = f.name.length > 18 ? f.name.slice(0,18) + "..." : f.name;
+      $('fileTitle').textContent = f.name.length > 22 ? f.name.slice(0,22) + "..." : f.name;
       $('fileTitle').classList.add('text-blue-600');
     } else {
       $('fileTitle').textContent = "Attachment (Optional)";
@@ -223,7 +432,7 @@
 
   async function fetchHolidays() {
     try {
-      const res = await fetch(API_URL + "?action=get_holidays&t=" + Date.now());
+      const res = await fetch(API_URL + "?action=get_holidays");
       const data = await res.json();
       companyHolidays = Array.isArray(data) ? data : [];
     } catch (e) {
@@ -266,7 +475,7 @@
       const card = $('fileCard');
       if (type === 'Sick' && days >= 3 && !file) {
         card.classList.add('err');
-        $('fileTitle').textContent = "Medical Cert. Required! *";
+        $('fileTitle').textContent = "Medical certificate required *";
         $('fileTitle').classList.add('text-red-600');
         return false;
       } else {
@@ -278,7 +487,133 @@
     return true;
   }
 
-  function buildAndSubmitForm(action, extraFields) {
+  function validateRequiredFields() {
+    const type = $('leaveTypeValue').value;
+    const startDate = $('startDate').value;
+    const endDate = $('endDate').value;
+    const reason = $('reason').value.trim();
+    const otherSpec = $('otherSpecify').value.trim();
+
+    if (!type) return { ok: false, msg: "Please select a leave type." };
+    if (type === 'Other' && !otherSpec) return { ok: false, msg: "Please specify the 'Other' leave type." };
+    if (!startDate || !endDate) return { ok: false, msg: "Please select start and end dates." };
+    if (!reason) return { ok: false, msg: "Please enter a reason." };
+    if (!validateOnFly()) return { ok: false, msg: "Medical certificate is required for Sick Leave ≥ 3 working days." };
+    return { ok: true };
+  }
+
+  // ---------- Helpers ----------
+  function uuid() {
+    const a = crypto.getRandomValues(new Uint8Array(16));
+    a[6] = (a[6] & 0x0f) | 0x40;
+    a[8] = (a[8] & 0x3f) | 0x80;
+    const h = [...a].map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+  }
+
+  function truncateReason(text, max=60) {
+    const s = String(text || "").trim();
+    if (!s) return "-";
+    return s.length > max ? s.slice(0, max) + "…" : s;
+  }
+
+  function buildSummary(requestId, attachmentUrlMaybe) {
+    const type = $('leaveTypeValue').value;
+    const other = $('otherSpecify').value.trim();
+    const leaveTypeLabel = type === "Other" ? `Other (${other})` : type;
+
+    const startDate = $('startDate').value;
+    const endDate = $('endDate').value;
+    const dayPart = $('durationValue').value || "Full Day";
+    const days = calcWorkingDays(startDate, endDate);
+
+    const file = $('fileInput').files[0];
+    const attachmentText = file ? "Uploaded ✅" : (attachmentUrlMaybe ? "Available ✅" : "None");
+    const attachmentUrl = attachmentUrlMaybe || "";
+
+    return {
+      requestId,
+      leaveTypeLabel,
+      startDate,
+      endDate,
+      dayPart,
+      days,
+      attachmentText,
+      attachmentUrl
+    };
+  }
+
+  function resetFormForNew() {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+    $('leaveTypeValue').value = '';
+    $('otherSpecify').value = '';
+    $('otherField').classList.add('hidden');
+
+    $('reason').value = '';
+    $('durationValue').value = 'Full Day';
+
+    const durBtns = document.querySelectorAll('.dur-btn');
+    if (durBtns.length) {
+      durBtns.forEach(b => b.className = "dur-btn flex-1 py-2 text-sm font-medium text-slate-500");
+      durBtns[0].className = "dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600";
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    $('startDate').value = today;
+    $('endDate').value = today;
+
+    $('fileInput').value = '';
+    $('fileTitle').textContent = 'Attachment (Optional)';
+    $('fileTitle').classList.remove('text-blue-600', 'text-red-600');
+    $('fileCard').classList.remove('err');
+
+    loadedAttachmentUrl = "";
+    validateOnFly();
+  }
+
+  function setModeUI(mode) {
+    currentMode = mode;
+
+    $("bottomBar").classList.remove("hidden");
+    $("editActions").classList.add("hidden");
+    $("modeHint").classList.add("hidden");
+
+    if (mode === "edit") {
+      $("title").textContent = "Edit leave request";
+      $("modeHint").textContent = `Request ID: ${currentRequestId}`;
+      $("modeHint").classList.remove("hidden");
+      $("bottomBar").classList.add("hidden");
+      $("editActions").classList.remove("hidden");
+    } else if (mode === "approve") {
+      $("title").textContent = "Leave approval";
+      $("modeHint").textContent = "Processing...";
+      $("modeHint").classList.remove("hidden");
+      $("bottomBar").classList.add("hidden");
+    } else if (mode === "cancel") {
+      $("title").textContent = "Cancel request";
+      $("modeHint").textContent = `Request ID: ${currentRequestId}`;
+      $("modeHint").classList.remove("hidden");
+      $("bottomBar").classList.add("hidden");
+    } else {
+      $("title").textContent = "Leave Request 📝";
+    }
+  }
+
+  function goEdit(requestId) {
+    const url = new URL(location.href);
+    url.searchParams.set("mode", "edit");
+    url.searchParams.set("requestId", requestId);
+    location.href = url.toString();
+  }
+
+  // ---------- Submit via iframe (no redirect) ----------
+  function submitViaIframe(action, extraFields) {
+    // Ensure requestId for submit/edit/cancel
+    const needRequestId = ["submit_leave", "update_leave", "cancel_leave"].includes(action);
+    if (needRequestId && !extraFields.requestId) extraFields.requestId = uuid();
+
+    currentRequestId = extraFields.requestId || currentRequestId;
+
     const form = document.createElement("form");
     form.method = "POST";
     form.action = `${API_URL}?action=${encodeURIComponent(action)}`;
@@ -298,142 +633,274 @@
     Object.keys(extraFields || {}).forEach(k => add(k, extraFields[k]));
 
     const fileInput = $("fileInput");
-    form.appendChild(fileInput);
+    const hadFile = fileInput && fileInput.files && fileInput.files.length > 0;
+
+    if (fileInput) fileInput.setAttribute("name", "file");
+    if (hadFile) form.appendChild(fileInput);
 
     document.body.appendChild(form);
+
+    awaitingPostMessage = true;
+
+    if (postMessageTimer) clearTimeout(postMessageTimer);
+    postMessageTimer = setTimeout(() => {
+      if (awaitingPostMessage) handleNoResponseFallback(currentRequestId, action);
+    }, 9000);
+
     form.submit();
 
     setTimeout(() => {
-      const holder = document.getElementById("fileCard");
-      if (holder && !holder.contains(fileInput)) holder.appendChild(fileInput);
-      fileInput.onchange = handleFileChange;
-      try { document.body.removeChild(form); } catch(e) {}
-    }, 300);
+      const holder = $("fileCard");
+      if (holder && fileInput && !holder.contains(fileInput)) holder.appendChild(fileInput);
+      if (fileInput) fileInput.onchange = handleFileChange;
+    }, 200);
+  }
 
-    // ✅ If no postMessage within 12 sec => verify saved by requestId
-    setTimeout(async () => {
-      const loaderVisible = !document.getElementById("loader").classList.contains("hidden");
-      if (!loaderVisible) return;
+  async function handleNoResponseFallback(reqId, action) {
+    try {
+      const res = await fetch(`${API_URL}?action=check_request&requestId=${encodeURIComponent(reqId)}`);
+      const data = await res.json();
 
-      if (!pendingRequestId) {
-        hideLoader();
-        openResultModal("No response ❌", "Backend did not return result", "Missing requestId for verification.");
-        return;
-      }
+      awaitingPostMessage = false;
+      hideLoader();
 
-      try {
-        const res = await fetch(API_URL + "?action=check_request&requestId=" + encodeURIComponent(pendingRequestId) + "&t=" + Date.now());
-        const data = await res.json();
-
-        if (data && data.ok && data.found) {
-          hideLoader();
-          openResultModal("Saved Successfully ✅", "Your request has been submitted", `RequestId: ${pendingRequestId}`);
+      if (data && data.ok && data.found) {
+        if (action === "approve_leave") {
+          modalApproveSuccess(reqId, data.status || "UPDATED");
           return;
         }
 
-        hideLoader();
-        openResultModal(
-          "No response ❌",
-          "Cannot confirm saved",
-          `RequestId: ${pendingRequestId}\nPlease try again or contact admin.`
-        );
-      } catch (e) {
-        hideLoader();
-        openResultModal(
-          "No response ❌",
-          "Cannot verify saved",
-          `RequestId: ${pendingRequestId}\nVerification request failed.`
-        );
+        const sum = buildSummary(reqId, loadedAttachmentUrl);
+        modalSavedSuccess({
+          mode: (action === "update_leave") ? "edit" : "submit",
+          requestId: reqId,
+          summary: sum,
+          canEditCancel: true
+        });
+      } else {
+        showModal({
+          title: "No response",
+          subtitle: "We couldn’t confirm the result from the server. Please try again.",
+          rows: [{ label: "Request ID", value: reqId || "-", mono: true }],
+          actions: [
+            { label: "Close", kind: "primary", onClick: () => hideModal() }
+          ]
+        });
       }
-    }, 12000);
-  }
-
-  async function handleSubmit() {
-    const type = $('leaveTypeValue').value;
-    const startDate = $('startDate').value;
-    const endDate = $('endDate').value;
-    const reason = $('reason').value.trim();
-    const otherSpec = $('otherSpecify').value.trim();
-
-    if (!type) return alert("Please select Leave Type");
-    if (type === 'Other' && !otherSpec) return alert("Please specify Other type");
-    if (!startDate || !endDate) return alert("Please select dates");
-    if (!reason) return alert("Please specify reason");
-    if (!validateOnFly()) return alert("Medical Certificate required!");
-
-    // ✅ Create requestId before submit so we can verify later even if postMessage fails
-    pendingRequestId = uuidv4();
-
-    showLoader("Submitting...");
-
-    buildAndSubmitForm("submit_leave", {
-      requestId: pendingRequestId,
-      userId: userProfile?.userId || "",
-      name: userProfile?.displayName || "",
-      pictureUrl: userProfile?.pictureUrl || "",
-      leaveType: type,
-      otherSpecify: otherSpec,
-      startDate,
-      endDate,
-      dayPart: $('durationValue').value || "Full Day",
-      reason
-    });
-  }
-
-  // ✅ Receive result from backend via postMessage
-  // Fix: do NOT rely on origin (can be script.google.com OR script.googleusercontent.com)
-  // Instead: verify message source is exactly our iframe window.
-  window.addEventListener("message", (event) => {
-    const frame = document.getElementById("submitFrame");
-    if (!frame || event.source !== frame.contentWindow) return;
-
-    const data = event.data || {};
-    if (!data || data.app !== "leave_backend") return;
-
-    hideLoader();
-
-    if (data.ok) {
-      // sync pendingRequestId if backend returns it
-      if (data.requestId) pendingRequestId = data.requestId;
-
-      openResultModal(
-        data.mode === "approve" ? "Approval Updated ✅" : "Saved Successfully ✅",
-        data.mode === "approve" ? (data.status || "Updated") : "Your request has been submitted",
-        `RequestId: ${data.requestId || pendingRequestId || "-"}`
-      );
-    } else {
-      openResultModal(
-        "Failed ❌",
-        "Please try again",
-        data.error ? String(data.error) : "Unknown error"
-      );
-    }
-  });
-
-  async function handleApproveFlowIfAny() {
-    const params = new URLSearchParams(location.search);
-    const mode = params.get("mode");
-    const requestId = params.get("requestId");
-    const decision = params.get("decision");
-
-    if (mode === "approve") {
-      if (!requestId || !decision) return;
-
-      $("title").textContent = "Leave Approval";
-      $("userGreet").textContent = "Processing decision...";
-      showLoader("Approving...");
-
-      const profile = await liff.getProfile();
-      pendingRequestId = requestId; // for verify fallback
-      buildAndSubmitForm("approve_leave", {
-        requestId,
-        decision,
-        actorUserId: profile.userId
+    } catch (e) {
+      awaitingPostMessage = false;
+      hideLoader();
+      showModal({
+        title: "No response",
+        subtitle: "Please try again.",
+        rows: [{ label: "Request ID", value: reqId || "-", mono: true }],
+        actions: [{ label: "Close", kind: "primary", onClick: () => hideModal() }]
       });
     }
   }
 
+  // ---------- Modes ----------
+  function parseQuery() {
+    const params = new URLSearchParams(location.search);
+    return {
+      mode: params.get("mode") || "",
+      requestId: params.get("requestId") || "",
+      decision: params.get("decision") || ""
+    };
+  }
+
+  async function loadForEdit(reqId) {
+    showLoader("Loading...", "Fetching request details...");
+    try {
+      const res = await fetch(`${API_URL}?action=get_request&requestId=${encodeURIComponent(reqId)}`);
+      const data = await res.json();
+      hideLoader();
+
+      if (!data || !data.ok || !data.found) {
+        showModal({
+          title: "Request not found",
+          subtitle: "We couldn’t find this Request ID.",
+          rows: [{ label: "Request ID", value: reqId, mono: true }],
+          actions: [{ label: "Close", kind: "primary", onClick: () => { hideModal(); try { liff.closeWindow(); } catch(e) {} } }]
+        });
+        return;
+      }
+
+      // client-side safety check (server will enforce on update/cancel)
+      if (data.data?.userId && userProfile?.userId && data.data.userId !== userProfile.userId) {
+        showModal({
+          title: "Not authorized",
+          subtitle: "This request belongs to a different user.",
+          rows: [{ label: "Request ID", value: reqId, mono: true }],
+          actions: [{ label: "Close", kind: "primary", onClick: () => { hideModal(); try { liff.closeWindow(); } catch(e) {} } }]
+        });
+        return;
+      }
+
+      if (data.data?.status && data.data.status !== "SUBMITTED") {
+        showModal({
+          title: "Edit not available",
+          subtitle: `This request is already ${data.data.status}.`,
+          rows: [
+            { label: "Request ID", value: reqId, mono: true },
+            { label: "Status", value: data.data.status, badge: true }
+          ],
+          actions: [{ label: "Close", kind: "primary", onClick: () => { hideModal(); try { liff.closeWindow(); } catch(e) {} } }]
+        });
+        return;
+      }
+
+      // fill form
+      loadedAttachmentUrl = data.data?.attachmentUrl || "";
+
+      // select type
+      document.querySelectorAll(".type-btn").forEach(b => b.classList.remove("selected"));
+      $("leaveTypeValue").value = data.data?.leaveType || "";
+
+      // toggle other field
+      if ($("leaveTypeValue").value === "Other") {
+        $("otherField").classList.remove("hidden");
+        $("otherSpecify").value = data.data?.otherSpecify || "";
+      } else {
+        $("otherField").classList.add("hidden");
+        $("otherSpecify").value = "";
+      }
+
+      // highlight matching button
+      document.querySelectorAll(".type-btn").forEach(b => {
+        const t = (b.textContent || "").toLowerCase();
+        const v = ($("leaveTypeValue").value || "").toLowerCase();
+        if (v === "sick" && t.includes("sick")) b.classList.add("selected");
+        if (v === "annual" && t.includes("annual")) b.classList.add("selected");
+        if (v === "personal" && t.includes("personal")) b.classList.add("selected");
+        if (v === "other" && t.includes("other")) b.classList.add("selected");
+      });
+
+      $("startDate").value = data.data?.startDate || "";
+      $("endDate").value = data.data?.endDate || "";
+      $("durationValue").value = data.data?.dayPart || "Full Day";
+      $("reason").value = data.data?.reason || "";
+
+      // duration button visuals
+      const durBtns = document.querySelectorAll('.dur-btn');
+      durBtns.forEach(b => b.className = "dur-btn flex-1 py-2 text-sm font-medium text-slate-500");
+      if ($("durationValue").value === "Full Day") durBtns[0].className = "dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600";
+      if ($("durationValue").value === "Morning") durBtns[1].className = "dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600";
+      if ($("durationValue").value === "Afternoon") durBtns[2].className = "dur-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600";
+
+      // attachment info note
+      if (loadedAttachmentUrl) {
+        $("fileTitle").textContent = "Attachment available (optional replace)";
+        $("fileTitle").classList.add("text-blue-600");
+      } else {
+        $("fileTitle").textContent = "Attachment (Optional)";
+        $("fileTitle").classList.remove("text-blue-600");
+      }
+
+      validateOnFly();
+      setModeUI("edit");
+
+      showModal({
+        title: "Edit mode",
+        subtitle: "Update the fields below, then press Update.",
+        rows: [
+          { label: "Request ID", value: reqId, mono: true },
+          { label: "Status", value: "SUBMITTED", badge: true },
+          ...(loadedAttachmentUrl ? [{ label: "Attachment", value: loadedAttachmentUrl, link: true }] : [])
+        ],
+        actions: [
+          { label: "OK", kind: "primary", onClick: () => hideModal() }
+        ]
+      });
+
+    } catch (e) {
+      hideLoader();
+      modalServerError("failed_to_load_request", reqId);
+    }
+  }
+
+  async function handleApproveFlow(reqId, decision) {
+    showLoader("Updating status...", "Please keep this screen open.");
+    submitViaIframe("approve_leave", {
+      requestId: reqId,
+      decision: String(decision || "").toUpperCase(),
+      actorUserId: userProfile?.userId || ""
+    });
+  }
+
+  // ---------- Submit / Update ----------
+  async function handleSubmit() {
+    const v = validateRequiredFields();
+    if (!v.ok) return modalValidationError(v.msg);
+
+    const type = $('leaveTypeValue').value;
+    const otherSpec = $('otherSpecify').value.trim();
+
+    const action = (currentMode === "edit") ? "update_leave" : "submit_leave";
+    const reqId = (currentMode === "edit") ? currentRequestId : uuid();
+
+    // show loader + send
+    showLoader(currentMode === "edit" ? "Saving changes..." : "Submitting request...",
+               "Please keep this screen open.");
+
+    submitViaIframe(action, {
+      requestId: reqId,
+      userId: userProfile?.userId || "",
+      actorUserId: userProfile?.userId || "",
+      name: userProfile?.displayName || "",
+      pictureUrl: userProfile?.pictureUrl || "",
+      leaveType: type,
+      otherSpecify: otherSpec,
+      startDate: $('startDate').value,
+      endDate: $('endDate').value,
+      dayPart: $('durationValue').value || "Full Day",
+      reason: $('reason').value.trim()
+    });
+  }
+
+  // ---------- postMessage listener from backend ----------
+  function listenPostMessage() {
+    window.addEventListener("message", (event) => {
+      const data = event?.data;
+      if (!data || data.app !== "leave_backend") return;
+
+      awaitingPostMessage = false;
+      if (postMessageTimer) clearTimeout(postMessageTimer);
+
+      hideLoader();
+
+      const ok = !!data.ok;
+      const mode = data.mode || "";
+      const requestId = data.requestId || currentRequestId || "-";
+      const status = data.status || "";
+      const error = data.error || "unknown_error";
+
+      if (!ok) return modalServerError(error, requestId);
+
+      if (mode === "approve") return modalApproveSuccess(requestId, status);
+
+      if (mode === "cancel") return modalCancelSuccess(requestId, status);
+
+      // submit/edit success
+      // For submit: allow edit/cancel buttons (status still SUBMITTED)
+      // For edit: still allow cancel/edit
+      const summary = buildSummary(requestId, loadedAttachmentUrl);
+      summary.attachmentText = summary.attachmentUrl ? "Available ✅" : (summary.attachmentText || "None");
+      summary.reason = truncateReason($("reason").value, 70);
+
+      modalSavedSuccess({
+        mode,
+        requestId,
+        summary,
+        canEditCancel: true
+      });
+    });
+  }
+
+  // ---------- Init ----------
   async function init() {
+    listenPostMessage();
+
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login(); return; }
 
@@ -446,6 +913,7 @@
 
     $("fileInput").setAttribute("name", "file");
 
+    // defaults
     const today = new Date().toISOString().split('T')[0];
     $('startDate').value = today;
     $('endDate').value = today;
@@ -453,13 +921,70 @@
     await fetchHolidays();
     validateOnFly();
 
-    await handleApproveFlowIfAny();
-    hideLoader();
+    const q = parseQuery();
+
+    if (q.mode === "approve") {
+      currentRequestId = q.requestId || "";
+      setModeUI("approve");
+
+      if (!currentRequestId || !q.decision) {
+        showModal({
+          title: "Invalid link",
+          subtitle: "Missing request ID or decision.",
+          rows: [],
+          actions: [{ label: "Close", kind: "primary", onClick: () => { hideModal(); try { liff.closeWindow(); } catch(e) {} } }]
+        });
+        return;
+      }
+
+      await handleApproveFlow(currentRequestId, q.decision);
+      return;
+    }
+
+    if (q.mode === "edit") {
+      currentRequestId = q.requestId || "";
+      if (!currentRequestId) {
+        showModal({
+          title: "Invalid link",
+          subtitle: "Missing request ID.",
+          rows: [],
+          actions: [{ label: "Close", kind: "primary", onClick: () => { hideModal(); try { liff.closeWindow(); } catch(e) {} } }]
+        });
+        return;
+      }
+      setModeUI("edit");
+      await loadForEdit(currentRequestId);
+      return;
+    }
+
+    if (q.mode === "cancel") {
+      currentRequestId = q.requestId || "";
+      if (!currentRequestId) {
+        showModal({
+          title: "Invalid link",
+          subtitle: "Missing request ID.",
+          rows: [],
+          actions: [{ label: "Close", kind: "primary", onClick: () => { hideModal(); try { liff.closeWindow(); } catch(e) {} } }]
+        });
+        return;
+      }
+      setModeUI("cancel");
+      confirmCancel(currentRequestId);
+      return;
+    }
+
+    setModeUI("submit");
   }
 
   init().catch(err => {
     console.error(err);
-    alert("LIFF init error: " + (err.message || err));
+    hideLoader();
+    showModal({
+      title: "LIFF error",
+      subtitle: err?.message || String(err),
+      rows: [],
+      actions: [{ label: "Close", kind: "primary", onClick: () => hideModal() }]
+    });
   });
 </script>
 </body>
