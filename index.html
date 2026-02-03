@@ -114,29 +114,19 @@
 <!-- Hidden iframe for submit -->
 <iframe id="submitFrame" name="submitFrame" class="hidden"></iframe>
 
-<!-- Result Modal -->
-<div id="resultModal" class="fixed inset-0 hidden items-center justify-center z-[999]">
-  <div class="absolute inset-0 bg-black/40" onclick="closeResultModal()"></div>
+<!-- ✅ Minimal Success Modal -->
+<div id="successModal" class="fixed inset-0 hidden items-center justify-center z-[999]">
+  <div class="absolute inset-0 bg-black/40"></div>
 
-  <div class="relative w-[92%] max-w-md bg-white rounded-3xl p-5 shadow-xl">
-    <div class="flex items-start justify-between gap-3">
-      <div>
-        <div id="modalTitle" class="text-lg font-extrabold text-slate-900">Done</div>
-        <div id="modalSubtitle" class="text-sm text-slate-500 mt-1">—</div>
-      </div>
-      <button type="button" class="w-10 h-10 rounded-full bg-slate-100 text-slate-700 font-bold"
-              onclick="closeResultModal()">✕</button>
-    </div>
+  <div class="relative w-[92%] max-w-sm bg-white rounded-3xl p-6 shadow-xl text-center">
+    <div class="text-2xl font-extrabold text-slate-900">Saved Successfully ✅</div>
+    <div class="mt-2 text-sm text-slate-600">Your request has been submitted.</div>
 
-    <div id="modalBody" class="mt-4 text-sm text-slate-700 whitespace-pre-wrap"></div>
-
-    <div class="mt-5 flex gap-2">
-      <button type="button" id="modalPrimaryBtn"
-              class="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold"
-              onclick="handleModalPrimary()">OK</button>
-      <button type="button" class="flex-1 bg-slate-100 text-slate-800 py-3 rounded-2xl font-bold"
-              onclick="closeResultModal()">Close</button>
-    </div>
+    <button type="button"
+            class="mt-6 w-full bg-blue-600 text-white py-3 rounded-2xl font-bold text-lg"
+            onclick="doneAndExit()">
+      Done
+    </button>
   </div>
 </div>
 
@@ -149,7 +139,7 @@
   let companyHolidays = [];
   let userProfile = null;
 
-  // ✅ requestId used for verification when no postMessage received
+  // requestId used for verification when no postMessage received
   let pendingRequestId = "";
 
   const $ = (id) => document.getElementById(id);
@@ -164,23 +154,6 @@
     $("loader").classList.remove("flex");
   }
 
-  function openResultModal(title, subtitle, body) {
-    $("modalTitle").textContent = title || "Done";
-    $("modalSubtitle").textContent = subtitle || "";
-    $("modalBody").textContent = body || "";
-    $("resultModal").classList.remove("hidden");
-    $("resultModal").classList.add("flex");
-  }
-
-  function closeResultModal() {
-    $("resultModal").classList.add("hidden");
-    $("resultModal").classList.remove("flex");
-  }
-
-  function handleModalPrimary() {
-    try { liff.closeWindow(); } catch(e) { closeResultModal(); }
-  }
-
   function uuidv4() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
@@ -188,6 +161,19 @@
       const v = c === "x" ? r : (r & 3) | 8;
       return v.toString(16);
     });
+  }
+
+  function openSuccessModal() {
+    $("successModal").classList.remove("hidden");
+    $("successModal").classList.add("flex");
+  }
+
+  function doneAndExit() {
+    try { liff.closeWindow(); } catch(e) {
+      // fallback (if not in LIFF)
+      $("successModal").classList.add("hidden");
+      $("successModal").classList.remove("flex");
+    }
   }
 
   function selectType(btn, val) {
@@ -310,14 +296,14 @@
       try { document.body.removeChild(form); } catch(e) {}
     }, 300);
 
-    // ✅ If no postMessage within 12 sec => verify saved by requestId
+    // If no postMessage within 12 sec => verify saved by requestId
     setTimeout(async () => {
       const loaderVisible = !document.getElementById("loader").classList.contains("hidden");
       if (!loaderVisible) return;
 
       if (!pendingRequestId) {
         hideLoader();
-        openResultModal("No response ❌", "Backend did not return result", "Missing requestId for verification.");
+        alert("No response (missing requestId).");
         return;
       }
 
@@ -327,23 +313,15 @@
 
         if (data && data.ok && data.found) {
           hideLoader();
-          openResultModal("Saved Successfully ✅", "Your request has been submitted", `RequestId: ${pendingRequestId}`);
+          openSuccessModal();
           return;
         }
 
         hideLoader();
-        openResultModal(
-          "No response ❌",
-          "Cannot confirm saved",
-          `RequestId: ${pendingRequestId}\nPlease try again or contact admin.`
-        );
+        alert("No response. Cannot confirm saved. Please try again.");
       } catch (e) {
         hideLoader();
-        openResultModal(
-          "No response ❌",
-          "Cannot verify saved",
-          `RequestId: ${pendingRequestId}\nVerification request failed.`
-        );
+        alert("No response. Verification failed. Please try again.");
       }
     }, 12000);
   }
@@ -361,9 +339,7 @@
     if (!reason) return alert("Please specify reason");
     if (!validateOnFly()) return alert("Medical Certificate required!");
 
-    // ✅ Create requestId before submit so we can verify later even if postMessage fails
     pendingRequestId = uuidv4();
-
     showLoader("Submitting...");
 
     buildAndSubmitForm("submit_leave", {
@@ -380,9 +356,7 @@
     });
   }
 
-  // ✅ Receive result from backend via postMessage
-  // Fix: do NOT rely on origin (can be script.google.com OR script.googleusercontent.com)
-  // Instead: verify message source is exactly our iframe window.
+  // Receive result from backend via postMessage (hidden iframe)
   window.addEventListener("message", (event) => {
     const frame = document.getElementById("submitFrame");
     if (!frame || event.source !== frame.contentWindow) return;
@@ -393,20 +367,10 @@
     hideLoader();
 
     if (data.ok) {
-      // sync pendingRequestId if backend returns it
-      if (data.requestId) pendingRequestId = data.requestId;
-
-      openResultModal(
-        data.mode === "approve" ? "Approval Updated ✅" : "Saved Successfully ✅",
-        data.mode === "approve" ? (data.status || "Updated") : "Your request has been submitted",
-        `RequestId: ${data.requestId || pendingRequestId || "-"}`
-      );
+      // ✅ Success => show minimal modal and exit on Done
+      openSuccessModal();
     } else {
-      openResultModal(
-        "Failed ❌",
-        "Please try again",
-        data.error ? String(data.error) : "Unknown error"
-      );
+      alert(data.error ? String(data.error) : "Submit failed");
     }
   });
 
@@ -424,7 +388,8 @@
       showLoader("Approving...");
 
       const profile = await liff.getProfile();
-      pendingRequestId = requestId; // for verify fallback
+      pendingRequestId = requestId;
+
       buildAndSubmitForm("approve_leave", {
         requestId,
         decision,
