@@ -32,29 +32,7 @@
     </div>
   </div>
 
-  <!-- ✅ Persistent form (IMPORTANT: file input stays inside permanently) -->
-  <form id="leaveForm" class="px-5 space-y-6" enctype="multipart/form-data" target="submitFrame" method="POST">
-
-    <!-- ===== Hidden fields consumed by backend ===== -->
-    <input type="hidden" name="action" id="f_action">
-
-    <input type="hidden" name="requestId" id="f_requestId">
-    <input type="hidden" name="userId" id="f_userId">
-    <input type="hidden" name="name" id="f_name">
-    <input type="hidden" name="pictureUrl" id="f_pictureUrl">
-
-    <input type="hidden" name="leaveType" id="f_leaveType">
-    <input type="hidden" name="otherSpecify" id="f_otherSpecify">
-    <input type="hidden" name="startDate" id="f_startDate">
-    <input type="hidden" name="endDate" id="f_endDate">
-    <input type="hidden" name="dayPart" id="f_dayPart">
-    <input type="hidden" name="reason" id="f_reason">
-
-    <!-- Approve flow only -->
-    <input type="hidden" name="decision" id="f_decision">
-    <input type="hidden" name="actorUserId" id="f_actorUserId">
-
-    <!-- ===== UI controls (not named, we copy values into hidden fields) ===== -->
+  <div class="px-5 space-y-6" id="formUI">
 
     <div class="space-y-3">
       <label class="text-sm font-bold text-slate-700 ml-1">Leave Type <span class="text-red-500">*</span></label>
@@ -89,7 +67,7 @@
         </div>
       </div>
 
-      <div class="text-[10px] text-slate-400 italic font-medium">* Weekends & Company Holidays excluded (holiday list optional).</div>
+      <div class="text-[10px] text-slate-400 italic font-medium">* Weekends & Company Holidays excluded.</div>
     </div>
 
     <div class="card space-y-2">
@@ -116,12 +94,10 @@
           <p class="text-[10px] text-slate-400 italic">Required if Sick Leave ≥ 3 working days</p>
         </div>
       </div>
-
-      <!-- ✅ MUST stay inside the persistent form permanently -->
       <input type="file" id="fileInput" name="file" class="hidden" onchange="handleFileChange()" accept="image/*,application/pdf">
     </div>
 
-  </form>
+  </div>
 
   <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
     <button id="submitBtn" onclick="handleSubmit()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg">Submit</button>
@@ -134,9 +110,6 @@
     <div class="font-bold text-slate-600" id="loaderText">Processing...</div>
   </div>
 </div>
-
-<!-- Hidden iframe for submit -->
-<iframe id="submitFrame" name="submitFrame" class="hidden"></iframe>
 
 <!-- ✅ Minimal Success Modal -->
 <div id="successModal" class="fixed inset-0 hidden items-center justify-center z-[999]">
@@ -162,7 +135,7 @@
 
   let companyHolidays = [];
   let userProfile = null;
-  let pendingRequestId = "";
+
   const $ = (id) => document.getElementById(id);
 
   function showLoader(msg){
@@ -284,56 +257,10 @@
     return true;
   }
 
-  function setHidden(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.value = (val == null ? "" : String(val));
-  }
-
-  function submitViaPersistentForm(action, extraFields) {
-    const form = document.getElementById("leaveForm");
-    if (!form) {
-      alert("leaveForm not found");
-      hideLoader();
-      return;
-    }
-
-    form.action = `${API_URL}?action=${encodeURIComponent(action)}`;
-
-    setHidden("f_action", action);
-    Object.keys(extraFields || {}).forEach(k => setHidden("f_" + k, extraFields[k]));
-
-    form.submit();
-
-    // Fallback verify if no postMessage within 12 sec
-    setTimeout(async () => {
-      const loaderVisible = !document.getElementById("loader").classList.contains("hidden");
-      if (!loaderVisible) return;
-
-      if (!pendingRequestId) {
-        hideLoader();
-        alert("No response (missing requestId).");
-        return;
-      }
-
-      try {
-        const res = await fetch(
-          API_URL + "?action=check_request&requestId=" + encodeURIComponent(pendingRequestId) + "&t=" + Date.now()
-        );
-        const data = await res.json();
-
-        if (data && data.ok && data.found) {
-          hideLoader();
-          openSuccessModal();
-          return;
-        }
-
-        hideLoader();
-        alert("No response. Cannot confirm saved. Please try again.");
-      } catch (e) {
-        hideLoader();
-        alert("No response. Verification failed. Please try again.");
-      }
-    }, 12000);
+  async function postFormData(fd) {
+    const res = await fetch(API_URL, { method: "POST", body: fd });
+    // ถ้าติด CORS จริง ๆ ตรงนี้จะ throw ก่อนถึง res.json()
+    return await res.json();
   }
 
   async function handleSubmit() {
@@ -349,35 +276,42 @@
     if (!reason) return alert("Please specify reason");
     if (!validateOnFly()) return alert("Medical Certificate required!");
 
-    pendingRequestId = uuidv4();
     showLoader("Submitting...");
 
-    submitViaPersistentForm("submit_leave", {
-      requestId: pendingRequestId,
-      userId: userProfile?.userId || "",
-      name: userProfile?.displayName || "",
-      pictureUrl: userProfile?.pictureUrl || "",
-      leaveType: type,
-      otherSpecify: otherSpec,
-      startDate,
-      endDate,
-      dayPart: $('durationValue').value || "Full Day",
-      reason
-    });
+    const requestId = uuidv4();
+    const fd = new FormData();
+    fd.append("action", "submit_leave");
+    fd.append("requestId", requestId);
+    fd.append("userId", userProfile?.userId || "");
+    fd.append("name", userProfile?.displayName || "");
+    fd.append("pictureUrl", userProfile?.pictureUrl || "");
+    fd.append("leaveType", type);
+    fd.append("otherSpecify", otherSpec);
+    fd.append("startDate", startDate);
+    fd.append("endDate", endDate);
+    fd.append("dayPart", $('durationValue').value || "Full Day");
+    fd.append("reason", reason);
+
+    const file = $('fileInput').files[0];
+    if (file) {
+      // backend รับไฟล์ field name อะไรก็ได้ (เอาไฟล์แรก)
+      fd.append("file", file);
+    }
+
+    try {
+      const data = await postFormData(fd);
+      hideLoader();
+
+      if (data && data.ok) {
+        openSuccessModal();
+      } else {
+        alert(data?.error || "Submit failed");
+      }
+    } catch (e) {
+      hideLoader();
+      alert("Network/CORS error: " + (e?.message || e));
+    }
   }
-
-  window.addEventListener("message", (event) => {
-    const frame = document.getElementById("submitFrame");
-    if (!frame || event.source !== frame.contentWindow) return;
-
-    const data = event.data || {};
-    if (!data || data.app !== "leave_backend") return;
-
-    hideLoader();
-
-    if (data.ok) openSuccessModal();
-    else alert(data.error ? String(data.error) : "Submit failed");
-  });
 
   async function handleApproveFlowIfAny() {
     const params = new URLSearchParams(location.search);
@@ -385,21 +319,35 @@
     const requestId = params.get("requestId");
     const decision = params.get("decision");
 
-    if (mode === "approve") {
-      if (!requestId || !decision) return;
+    if (mode !== "approve") return;
+    if (!requestId || !decision) return;
 
-      $("title").textContent = "Leave Approval";
-      $("userGreet").textContent = "Processing decision...";
-      showLoader("Approving...");
+    $("title").textContent = "Leave Approval";
+    $("userGreet").textContent = "Processing decision...";
+    showLoader("Approving...");
 
-      const profile = await liff.getProfile();
-      pendingRequestId = requestId;
+    const profile = await liff.getProfile();
 
-      submitViaPersistentForm("approve_leave", {
-        requestId,
-        decision,
-        actorUserId: profile.userId
-      });
+    const fd = new FormData();
+    fd.append("action", "approve_leave");
+    fd.append("requestId", requestId);
+    fd.append("decision", decision);
+    fd.append("actorUserId", profile.userId);
+
+    try {
+      const data = await postFormData(fd);
+      hideLoader();
+
+      if (data && data.ok) {
+        alert("✅ Status updated: " + (data.status || "OK"));
+        try { liff.closeWindow(); } catch(e) {}
+      } else {
+        alert("❌ Approve failed: " + (data?.error || "Unknown error"));
+        try { liff.closeWindow(); } catch(e) {}
+      }
+    } catch (e) {
+      hideLoader();
+      alert("Network/CORS error: " + (e?.message || e));
     }
   }
 
@@ -420,6 +368,7 @@
 
     await fetchHolidays();
     validateOnFly();
+
     await handleApproveFlowIfAny();
     hideLoader();
   }
