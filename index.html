@@ -55,7 +55,7 @@
       box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
     }
 
-    /* Common Badge Style (Blue Pill) - ใช้คลาสเดียวกันเพื่อให้เหมือนกันเป๊ะ */
+    /* Badge Style */
     .info-badge {
       font-size: 11px; font-weight: 700;
       background-color: #eff6ff; color: #2563eb; /* Blue-50, Blue-600 */
@@ -96,7 +96,7 @@
         <label class="text-sm font-bold text-slate-700">Leave Type <span class="text-red-500">*</span></label>
         
         <span id="remainingBox" class="hidden info-badge animate-[fadeIn_0.3s_ease-out]">
-           Remaining:&nbsp;<span id="remainingValue">-</span>
+           Remaining: <span id="remainingValue" class="ml-1">-</span>
         </span>
       </div>
       
@@ -130,7 +130,7 @@
       <div class="flex items-center justify-between border-b border-slate-100 pb-3 h-10">
         <label class="text-sm font-bold text-slate-700">Date <span class="text-red-500">*</span></label>
         
-        <span id="dayBadge" class="info-badge hidden">Working Day: 0 Days</span>
+        <span id="dayBadge" class="info-badge hidden">Working: 0</span>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
@@ -289,6 +289,7 @@
   function selectDur(btn, val) {
     document.querySelectorAll('.dur-btn').forEach(b => {
       b.className = "dur-btn flex-1 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700";
+      b.disabled = false;
     });
     btn.className = "dur-btn flex-1 py-2.5 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-600 ring-1 ring-black/5";
     $('durationValue').value = val;
@@ -407,13 +408,36 @@
     }
 
     let days = calcWorkingDays(s, e);
+    
+    // [Pro Feature] Auto Lock Duration for Multiple Days
+    const durBtns = document.querySelectorAll('.dur-btn');
+    if (days > 1) {
+       // Force Full Day
+       if ($('durationValue').value !== 'Full Day') {
+          // Visual select Full Day
+          selectDur(durBtns[0], 'Full Day');
+       }
+       // Disable Morning/Afternoon
+       durBtns[1].disabled = true;
+       durBtns[2].disabled = true;
+       durBtns[1].classList.add('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+       durBtns[2].classList.add('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+    } else {
+       // Unlock if just 1 day
+       durBtns[1].disabled = false;
+       durBtns[2].disabled = false;
+       durBtns[1].classList.remove('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+       durBtns[2].classList.remove('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+    }
+
+    // Apply half-day logic
     const dp = $('durationValue').value || "Full Day";
     if ((dp === "Morning" || dp === "Afternoon") && days > 0) {
       days -= 0.5;
     }
 
-    // [Update] Format: "Working Day: X Days"
-    badge.textContent = `Working Day: ${days} Days`;
+    // [Update] Format: "Working: X" (Symmetrical with Remaining)
+    badge.textContent = `Working: ${days}`;
     badge.classList.remove('hidden');
 
     // 1) Medical cert rule
@@ -426,7 +450,7 @@
       return false;
     }
 
-    // 2) Remaining balance rule (Show Error Box)
+    // 2) Remaining balance rule
     const remaining = (type && leaveBalances[type] != null) ? leaveBalances[type] : null;
     if (type && remaining != null && days > 0 && days > remaining) {
       $('startDate').classList.add('err');
@@ -518,6 +542,12 @@
       return;
     }
 
+    // [Pro Feature] Double Submit Protection
+    const btn = $('submitBtn');
+    btn.disabled = true;
+    btn.textContent = "Sending...";
+    btn.classList.add('opacity-70', 'cursor-not-allowed');
+
     pendingRequestId = uuidv4();
     showLoader("Submitting...");
 
@@ -546,6 +576,11 @@
       openSuccessModal();
     } else {
       alert(data.error ? String(data.error) : "Submit failed");
+      // Re-enable button on error
+      const btn = $('submitBtn');
+      btn.disabled = false;
+      btn.textContent = "Submit";
+      btn.classList.remove('opacity-70', 'cursor-not-allowed');
     }
   });
 
@@ -584,9 +619,13 @@
     }
 
     $("fileInput").setAttribute("name", "file");
+    
+    // [Pro Feature] Set Min Date = Today
     const today = new Date().toISOString().split('T')[0];
     $('startDate').value = today;
     $('endDate').value = today;
+    $('startDate').setAttribute("min", today);
+    $('endDate').setAttribute("min", today);
 
     await fetchLeaveBalance(userProfile.userId);
     await fetchHolidays();
