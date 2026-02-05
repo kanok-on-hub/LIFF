@@ -96,7 +96,7 @@
         <label class="text-sm font-bold text-slate-700">Leave Type <span class="text-red-500">*</span></label>
         
         <span id="remainingBox" class="hidden info-badge animate-[fadeIn_0.3s_ease-out]">
-           Remaining: <span id="remainingValue" class="ml-1">-</span>
+           Remaining:&nbsp;<span id="remainingValue">-</span>&nbsp;Days
         </span>
       </div>
       
@@ -130,7 +130,7 @@
       <div class="flex items-center justify-between border-b border-slate-100 pb-3 h-10">
         <label class="text-sm font-bold text-slate-700">Date <span class="text-red-500">*</span></label>
         
-        <span id="dayBadge" class="info-badge hidden">Working: 0</span>
+        <span id="dayBadge" class="info-badge hidden">Working: 0 Days</span>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
@@ -274,6 +274,13 @@
     }
   }
 
+  // [Helper] Convert YYYY-MM-DD to DD/MM/YYYY
+  function formatDateToThai(isoStr) {
+    if (!isoStr) return "";
+    const [y, m, d] = isoStr.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
   function selectType(btn, val) {
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
@@ -409,21 +416,17 @@
 
     let days = calcWorkingDays(s, e);
     
-    // [Pro Feature] Auto Lock Duration for Multiple Days
+    // [Pro Feature] Auto Lock Duration
     const durBtns = document.querySelectorAll('.dur-btn');
     if (days > 1) {
-       // Force Full Day
        if ($('durationValue').value !== 'Full Day') {
-          // Visual select Full Day
           selectDur(durBtns[0], 'Full Day');
        }
-       // Disable Morning/Afternoon
        durBtns[1].disabled = true;
        durBtns[2].disabled = true;
        durBtns[1].classList.add('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
        durBtns[2].classList.add('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
     } else {
-       // Unlock if just 1 day
        durBtns[1].disabled = false;
        durBtns[2].disabled = false;
        durBtns[1].classList.remove('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
@@ -436,8 +439,8 @@
       days -= 0.5;
     }
 
-    // [Update] Format: "Working: X" (Symmetrical with Remaining)
-    badge.textContent = `Working: ${days}`;
+    // [Update] Format: "Working: X Days"
+    badge.textContent = `Working: ${days} Days`;
     badge.classList.remove('hidden');
 
     // 1) Medical cert rule
@@ -551,6 +554,10 @@
     pendingRequestId = uuidv4();
     showLoader("Submitting...");
 
+    // [New] Convert dates to DD/MM/YYYY for backend
+    const startDateThai = formatDateToThai(startDate);
+    const endDateThai = formatDateToThai(endDate);
+
     buildAndSubmitForm("submit_leave", {
       requestId: pendingRequestId,
       userId: userProfile?.userId || "",
@@ -558,8 +565,8 @@
       pictureUrl: userProfile?.pictureUrl || "",
       leaveType: type,
       otherSpecify: otherSpec,
-      startDate,
-      endDate,
+      startDate: startDateThai, // Sent as DD/MM/YYYY
+      endDate: endDateThai,     // Sent as DD/MM/YYYY
       dayPart: $('durationValue').value || "Full Day",
       reason
     });
@@ -576,7 +583,6 @@
       openSuccessModal();
     } else {
       alert(data.error ? String(data.error) : "Submit failed");
-      // Re-enable button on error
       const btn = $('submitBtn');
       btn.disabled = false;
       btn.textContent = "Submit";
