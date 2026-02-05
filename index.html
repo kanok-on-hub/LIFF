@@ -50,20 +50,19 @@
       background: #ffffff; border-color: #3b82f6; 
       box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
     }
-    /* Error State for Input */
     .err { 
       border-color: #ef4444 !important; background-color: #fef2f2 !important; 
       box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
     }
 
-    /* Common Badge Style (Blue Pill) */
+    /* Common Badge Style (Blue Pill) - ใช้คลาสเดียวกันเพื่อให้เหมือนกันเป๊ะ */
     .info-badge {
       font-size: 11px; font-weight: 700;
       background-color: #eff6ff; color: #2563eb; /* Blue-50, Blue-600 */
       padding: 4px 12px; border-radius: 9999px;
       border: 1px solid #dbeafe; /* Blue-100 */
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-      display: inline-flex; align-items: center;
+      display: inline-flex; align-items: center; white-space: nowrap;
     }
 
     /* Animation */
@@ -93,7 +92,7 @@
   <div class="px-5 space-y-6 flex-1" id="formUI">
 
     <div class="space-y-3">
-      <div class="flex justify-between items-center px-1">
+      <div class="flex justify-between items-center px-1 h-7">
         <label class="text-sm font-bold text-slate-700">Leave Type <span class="text-red-500">*</span></label>
         
         <span id="remainingBox" class="hidden info-badge animate-[fadeIn_0.3s_ease-out]">
@@ -128,10 +127,10 @@
     </div>
 
     <div class="card space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-        <label class="text-sm font-bold text-slate-700">Select Date <span class="text-red-500">*</span></label>
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 h-10">
+        <label class="text-sm font-bold text-slate-700">Date <span class="text-red-500">*</span></label>
         
-        <span id="dayBadge" class="info-badge hidden">0 Days</span>
+        <span id="dayBadge" class="info-badge hidden">Working Day: 0 Days</span>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
@@ -203,7 +202,7 @@
 
   <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] z-40">
     <button id="submitBtn" onclick="handleSubmit()" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-500/30 active:scale-[0.98] transition-all">
-      Submit Request
+      Submit
     </button>
   </div>
 </div>
@@ -394,7 +393,7 @@
     $('endDate').classList.remove('err');
     $('fileCard').classList.remove('err');
     $('fileTitle').classList.remove('text-red-600');
-    quotaError.classList.add('hidden'); // ซ่อน error box ก่อนเสมอ
+    quotaError.classList.add('hidden');
 
     if (!s || !e) {
       badge.classList.add('hidden');
@@ -413,8 +412,8 @@
       days -= 0.5;
     }
 
-    // [Update] Badge shows only days now (Clean look)
-    badge.textContent = `${days} Days`;
+    // [Update] Format: "Working Day: X Days"
+    badge.textContent = `Working Day: ${days} Days`;
     badge.classList.remove('hidden');
 
     // 1) Medical cert rule
@@ -427,17 +426,15 @@
       return false;
     }
 
-    // 2) Remaining balance rule (New Logic: Show separate error box)
+    // 2) Remaining balance rule (Show Error Box)
     const remaining = (type && leaveBalances[type] != null) ? leaveBalances[type] : null;
     if (type && remaining != null && days > 0 && days > remaining) {
       $('startDate').classList.add('err');
       $('endDate').classList.add('err');
       
-      // Update data in error box
       $('reqDaysDisplay').textContent = days;
       $('remDaysDisplay').textContent = remaining;
       
-      // Show error box
       quotaError.classList.remove('hidden');
       return false;
     }
