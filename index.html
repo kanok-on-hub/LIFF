@@ -96,7 +96,7 @@
         <label class="text-sm font-bold text-slate-700">Leave Type <span class="text-red-500">*</span></label>
         
         <span id="remainingBox" class="hidden info-badge animate-[fadeIn_0.3s_ease-out]">
-           Remaining:&nbsp;<span id="remainingValue">-</span>&nbsp;Days
+           Remaining:&nbsp;<span id="remainingValue" class="ml-0.5">-</span>
         </span>
       </div>
       
@@ -364,7 +364,9 @@
     if (remaining == null) {
       box.classList.add('hidden');
     } else {
-      valEl.textContent = remaining;
+      // [Grammar Fix] Dynamic Unit (Day vs Days)
+      const unit = (remaining === 1) ? "Day" : "Days";
+      valEl.textContent = `${remaining} ${unit}`;
       box.classList.remove('hidden');
     }
   }
@@ -416,7 +418,7 @@
 
     let days = calcWorkingDays(s, e);
     
-    // [Pro Feature] Auto Lock Duration
+    // [Pro Feature] Auto Lock Duration for Multiple Days
     const durBtns = document.querySelectorAll('.dur-btn');
     if (days > 1) {
        if ($('durationValue').value !== 'Full Day') {
@@ -439,8 +441,9 @@
       days -= 0.5;
     }
 
-    // [Update] Format: "Working: X Days"
-    badge.textContent = `Working: ${days} Days`;
+    // [Grammar Fix] Dynamic Unit (Day vs Days)
+    const unit = (days === 1) ? "Day" : "Days";
+    badge.textContent = `Working: ${days} ${unit}`;
     badge.classList.remove('hidden');
 
     // 1) Medical cert rule
@@ -565,8 +568,8 @@
       pictureUrl: userProfile?.pictureUrl || "",
       leaveType: type,
       otherSpecify: otherSpec,
-      startDate: startDateThai, // Sent as DD/MM/YYYY
-      endDate: endDateThai,     // Sent as DD/MM/YYYY
+      startDate: startDateThai, 
+      endDate: endDateThai,    
       dayPart: $('durationValue').value || "Full Day",
       reason
     });
